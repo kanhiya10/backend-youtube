@@ -11,3 +11,16 @@ const storage = multer.diskStorage({
   })
   
   export const upload = multer({ storage, }) 
+
+
+// "multer".diskStorage: This function creates a storage configuration for storing uploaded files on disk.
+
+// "destination": This function specifies where the uploaded files should be stored. In this case, files will be saved to the ./public/temp directory. The cb function (callback) is called with 
+// null for errors and the path to the destination directory.
+
+// "filename": This function specifies the name of the file when it’s saved. Here, it uses the original file name (file.originalname). Again, cb is called with null for errors and the desired filename.
+
+
+
+// "multer({ storage })": This creates an instance of the multer middleware with the specified storage configuration. The upload constant can be used as middleware in your Express 
+// routes to handle file uploads.

@@ -53,8 +53,9 @@ const userSchema=new Schema(
 //this is the middleware which is used to perform actions before a document is saved to the database. 
 //This particular middleware is set up to hash a user's password before saving it to the database.
 userSchema.pre("save",async function (next){
-    if(!this.isModified(this.password)) return next();
+    if(!this.isModified("password")) return next();
 
+    console.log(this.password);
     this.password=await bcrypt.hash(this.password,10);//bcrypt encrypts the password
     next();
 })
@@ -62,7 +63,7 @@ userSchema.pre("save",async function (next){
 
 //The code allows you to compare a plain text password with a hashed password stored in the database. 
 userSchema.methods.isPasswordCorrect=async function(password){
-    return await password.bcrypt.compare(password,this.password);
+    return await bcrypt.compare(password,this.password);
 }
 
 userSchema.methods.generateAccessToken=function(){
