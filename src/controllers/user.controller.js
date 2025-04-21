@@ -2,6 +2,7 @@ import {asyncHandler} from "../utils/asyncHandler.js";
 import {ApiError} from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { User } from "../models/user.model.js";
+// import { Subscription } from "../models/subscription.model.js";
 import { RemoveFromCloudinary, UploadOnCloudinary } from "../utils/cloudinary.js";
 import jwt from "jsonwebtoken";
 import mongoose from "mongoose";
@@ -16,7 +17,7 @@ const generateAccessAndRefereshToken=async(userId)=>{
         const refreshToken=user.generateRefreshToken()
 
         user.refreshToken=refreshToken
-        await user.save({validateBeforeSave: false})
+        await user.save({validateBeforeSave: false})//by setting false mongoose will bypass the validation process before saving
 
         return {accessToken,refreshToken}
     }
@@ -25,16 +26,21 @@ const generateAccessAndRefereshToken=async(userId)=>{
     }
 }
 
+
 const registerUser=asyncHandler(async(req,res)=>{
     // res.status(200).json({
     //     message:'yes'
     // })
 
-    const {fullName,username,email,password}=req.body;
+    const {fullName,username,email,password,description}=req.body;
+
+//     console.log('fullName :',fullName);
+// console.log('username :',username);
 console.log('email :',email);
+// console.log('password :',password);
 
 if(
-    [fullName,email,username,password].some((field)=>field?.trim()==="")
+    [fullName,email,username,password,description].some((field)=>field?.trim()==="")
 ){
     throw new ApiError(400,"All fields are required")
 }
@@ -47,7 +53,7 @@ if(existedUser){
     throw new ApiError(409,"User with email or username already exists")
 }
 
-const avatarLocalPath=req.files?.avatar[0]?.path;
+const avatarLocalPath=req.files?.avatar[0]?.path;//req.files containes the files to be uploaded ,set throught multer middleaware
 // const coverImageLocalPath=req.files?.coverImage[0]?.path;
 
 let coverImageLocalPath;
@@ -74,10 +80,15 @@ const user=await User.create({
     avatar:avatar.url,
     coverImage:coverImage.url || "",
     email,
+    description,
     password,
     username:username.toLowerCase()
 })
 
+
+// const Channel=await Subscription.create({
+//     channel:user._id,
+// })
 const createdUser=await User.findById(user._id).select(
     "-password -refreshToken"
 )
@@ -109,12 +120,12 @@ const loginUser=asyncHandler(async(req,res)=>{
         throw new ApiError(400,"user does't exist");
     }
 
-    console.log("line 111",user.fullName)
-    console.log("line 112",user.password)
+    console.log("line 139",user.fullName)
+    console.log("line 140",user.password)
 
-    console.log("line 113",password)
+    console.log("line 142",password)
 
-    const isPasswordValid=await user.isPasswordCorrect(password);
+    const isPasswordValid=await user.isPasswordCorrect(password);//checks for the password saved in record
 
     // console.log("line 113",isPasswordValid);
 
@@ -124,11 +135,12 @@ const loginUser=asyncHandler(async(req,res)=>{
 
     const{accessToken,refreshToken}=await generateAccessAndRefereshToken(user._id)
 
-    const loggedInUser=await User.findById(user._id).select("-password -refreshToken")
+    const loggedInUser=await User.findById(user._id).select("-password -refreshToken")//select is used to exclude values
 
     const options={
-        httpOnly:true,
-        secure:true
+        httpOnly: true,      // Ensures the cookie is only accessible by the web server
+        secure: false,       // Set to true if you're using HTTPS; false for localhost
+        sameSite: 'Lax',      // Controls when cookies are sent with cross-site requests
     }
 
     return res
@@ -160,8 +172,9 @@ const logoutUser=asyncHandler(async(req,res)=>{
     )
 
     const options={
-        httpOnly:true,
-        secure:true
+        httpOnly: true,      // Ensures the cookie is only accessible by the web server
+        secure: false,       // Set to true if you're using HTTPS; false for localhost
+        sameSite: 'Lax', 
     }
 
     return res.status(200)
@@ -299,7 +312,11 @@ const updateUsersAvatar=asyncHandler(async(req,res)=>{
 
 const updateUsersCoverImage=asyncHandler(async(req,res)=>{
 
+    console.log('line 331 :',req.file?.path);
+
     const coverImageLocalPath=req.file?.path
+
+    console.log('updateUsersCoverImage is working');
 
     if(!coverImageLocalPath){
         throw new ApiError(400,"coverImage file is missing")
@@ -328,8 +345,76 @@ const updateUsersCoverImage=asyncHandler(async(req,res)=>{
     .json(200,req.user,"coverImage updated successfully")
 })
 
-const getUserChannelProfile=asyncHandler(async(req,res)=>{
 
+
+const setWatchHistory=asyncHandler(async(req,res)=>{
+
+    const{userId,videoId}=req.params;
+
+    console.log(userId,videoId);
+   
+        const user = await User.findById(userId);
+        if (user) {
+            user.watchHistory.push(videoId);
+            await user.save();
+            console.log('Video added to watch history.');
+        } else {
+            console.log('User not found.');
+        }
+    
+
+    
+
+   return res.status(200).json({ message: 'Video added to watch history' });
+})
+
+const getWatchHistory=asyncHandler(async(req,res)=>{
+
+    const {userId}=req.params;
+    try {
+        // Find the user by ID and populate the watchHistory field
+        const user = await User.findById(userId).populate('watchHistory');
+    
+        if (!user) {
+          console.log('User not found');
+          return;
+        }
+    
+        console.log('User Watch History:', user.watchHistory);
+    
+        // The user.watchHistory will now contain an array of full Video documents
+        return res.status(200)
+        .json(new ApiResponse(200,user.watchHistory,"current user watch History fetched"));
+  
+       
+      } catch (error) {
+        console.error('Error fetching watch history:', error);
+      }
+
+     
+})
+
+const ClearHistory=asyncHandler(async(req,res)=>{
+    const {userId}=req.params;
+
+    try{
+        const user=await User.findByIdAndUpdate(userId,{
+            $set:{
+                watchHistory:[]
+            }
+        },{
+            new:true
+        });
+
+        return res.status(200)
+        .json(new ApiResponse(200,user.watchHistory,"current user watch History cleared"));
+    }
+    catch(error){
+        console.error('Error fetching watch history:', error);
+    }
+})
+
+const visitChannel=asyncHandler(async(req,res)=>{
     const{username}=req.params;
 
     console.log("this is the username",username);
@@ -339,122 +424,24 @@ const getUserChannelProfile=asyncHandler(async(req,res)=>{
         throw new ApiError(400,"username is missing");
     }
 
-    const channel=await User.aggregate([
-        {
-            $match:{
-                username:username?.toLowerCase()
-            }
-        },
-        {
-            $lookup:{
-                from:"subscriptions",//as name in mongodb converts to lower case and become plural
-                foreignField:"channel",
-                localField:"_id",
-                as:"subscribers"
-            }
-        },
-        {
-            $lookup:{
-                from:"subscriptions",//as name in mongodb converts to lower case and become plural
-                foreignField:"subscriber",
-                localField:"_id",
-                as:"subscribedTo"
-            }
-        },
-        {
-            $addFields:{
-                subsciberCount:{
-                    $size:"$subscribers"
-                },
-                channelsSubscribedToCount:{
-                    $size:"$subscribedTo"
-                    },
-                    isSubscribed:{
-                        $cond:{
-                            if:{$in:[req.user?._id,"$subscribers.subscriber"]},//it checks weather the user is subscribed to a channel or not .
-                            then:true,
-                            else:false
-                        }
-                    }
-            }
-        },
-        {
-            $project:{
-                fullName:1,
-                username:1,
-                subsciberCount:1,
-                channelsSubscribedToCount:1,
-                isSubscribed:1,
-                avatar:1,
-                coverImage:1,
-                email:1,
-            }
-        }
+    const visitingUser=await User.findOne({
+        username:username
+    })
 
-])
-
-if(!channel?.length){
-    throw new ApiError(404,"channel does't exist");
+if(!visitingUser){
+    throw new ApiError(404,"visiting user does't exist");
 }
 
 return res.status(200)
-.json(new ApiResponse(200,channel[0],"User channel fetched successfully"))//generally aggregation pipeline gives multiple objects
+.json(new ApiResponse(200,visitingUser,"User channel fetched successfully"))//generally aggregation pipeline gives multiple objects
 // in an array as result but as we have filtered out the individual user using username therefore there will be only 1 object inside array.
 //that's why we have used channel[0] here.
 
-})
-
-const getWatchHistory=asyncHandler(async(req,res)=>{
-
-    const user=await User.aggregate([
-        {
-            $match:{
-                _id:new mongoose.Types.ObjectId(req.user._id)
-            }
-        },
-        {
-            $lookup:{
-                from:"videos",
-                localField:"watchHistory",
-                foreignField:"_id",
-                as:"watchHistory",
-                pipeline:[
-                    {
-                        $lookup:{
-                            from:"users",
-                        localField:"owner",
-                        foreignField:"_id",
-                        as:"owner",
-                        pipeline:[
-                            {
-                                $project:{
-                                    fullName:1,
-                                    username:1,
-                                    avatar:1
-                                }
-                            }
-                        ]
-                        }
-                    },
-                    {
-                        $addFields:{
-                            owner:{
-                                $first:"$owner"
-                            }
-                        }
-                    }
-                ]
-            }
-        }
-    ])
-
-    return res.status(200).
-    json(new ApiResponse(200,user[0].watchHistory,"watched History fetched successfully"));
 })
 
 export {registerUser,loginUser,
     logoutUser,refreshAccessToken,
     changeCurrentPassword,getCurrentUser,
     updateAccountDetails,updateUsersAvatar,
-    updateUsersCoverImage,getUserChannelProfile,
-    getWatchHistory}
+    updateUsersCoverImage,
+    setWatchHistory,visitChannel,getWatchHistory,ClearHistory}

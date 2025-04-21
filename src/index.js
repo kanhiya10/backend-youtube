@@ -1,4 +1,5 @@
-import dotenv from "dotenv";
+import dotenv from "dotenv"; 
+// This module is used to load environment variables from a .env file into process.env
 import connectDB from "./db/db.js";
 import {app} from "./app.js";
 

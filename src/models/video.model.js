@@ -3,7 +3,7 @@ import mongooseAggregatePaginate from 'mongoose-aggregate-paginate-v2';
 
 const videoSchema=new Schema(
     {
-   videoFlie:{
+   videoFile:{
         type:String,
         required:true,
     },
@@ -25,7 +25,7 @@ const videoSchema=new Schema(
     },
     views:{
             type:Number,
-            defaut:0,
+            default:0,
         },
     isPublished:{
         type:Boolean,
@@ -34,7 +34,19 @@ const videoSchema=new Schema(
     owner:{
         type:Schema.Types.ObjectId,
         ref:'User'
-    }
+    },
+    likedBy: [
+        {
+          type: Schema.Types.ObjectId,
+          ref: 'User',
+        },
+      ],
+      dislikedBy: [
+        {
+          type: Schema.Types.ObjectId,
+          ref: 'User',
+        },
+      ],
 
 
 },{timestamps:true}

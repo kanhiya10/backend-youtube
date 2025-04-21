@@ -2,12 +2,19 @@ import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 
-const app=express();
+const app=express();//An instance of the Express application
+
+app.use(cookieParser());
+// After applying this middleware, you can easily access cookies via req.cookies in your route handlers.
+
+// app.use(cors());
 
 app.use(cors({
-    origin:process.env.Cors_Origin,
-    Credential:true
+    // origin:process.env.Cors_Origin,
+    origin:'http://localhost:5173',
+    credentials:true,
 }))
+// This configuration allows requests from the origin specified in process.env.Cors_Origin and includes credentials (cookies, authorization headers, etc.) in cross-origin requests.
 
 //to set the limit on the incoming json payload from the body of http request.
 app.use(express.json({limit:"16kb"}))
@@ -17,10 +24,25 @@ app.use(express.urlencoded())
 
 app.use(express.static('public'))
 
-app.use(cookieParser())
+// Serves static files (such as images, CSS, JavaScript files) from the public directory. This is useful for serving assets that are needed on the client side.
+
+
+//  Middleware to parse cookies from the request headers and make them available on req.cookies
 
 import userRouter from "./routes/user.routes.js";
 
+import videoRouter from "./routes/video.routes.js";
+
+import subscriptionRouter from "./routes/subscription.routes.js";
+
+import viewVideoRouter from "./routes/viewVideo.routes.js";
+
 app.use("/api/v1/users", userRouter);
+
+app.use("/api/v1/videos",videoRouter)
+
+app.use("/api/v1/subscription",subscriptionRouter)
+
+app.use("/api/v1/viewVideo",viewVideoRouter)
 
 export {app};

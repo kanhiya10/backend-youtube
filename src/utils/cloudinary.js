@@ -30,7 +30,7 @@ const RemoveFromCloudinary= async(localFilePath)=>{
         if(!localFilePath)return null;
         //upload the file on cloudinary
         const response= await cloudinary.uploader.destroy(localFilePath);
-        console.log(response);
+        return response;
     }
     catch(error){
         console.log("error in removing file from cloudinary");
