@@ -37,6 +37,8 @@ import subscriptionRouter from "./routes/subscription.routes.js";
 
 import viewVideoRouter from "./routes/viewVideo.routes.js";
 
+import streamRouter from "./routes/stream.routes.js";
+
 app.use("/api/v1/users", userRouter);
 
 app.use("/api/v1/videos",videoRouter)
@@ -44,5 +46,7 @@ app.use("/api/v1/videos",videoRouter)
 app.use("/api/v1/subscription",subscriptionRouter)
 
 app.use("/api/v1/viewVideo",viewVideoRouter)
+
+app.use("/api/v1/stream",streamRouter)
 
 export {app};
