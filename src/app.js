@@ -39,6 +39,7 @@ import viewVideoRouter from "./routes/viewVideo.routes.js";
 
 import streamRouter from "./routes/stream.routes.js";
 
+
 app.use("/api/v1/users", userRouter);
 
 app.use("/api/v1/videos",videoRouter)

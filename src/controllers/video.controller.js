@@ -9,7 +9,8 @@ import { v4 as uuidv4 } from "uuid";
 import path from "path";
 import fs from 'fs';
 import {exec} from 'child_process';
-import {stderr,stdout} from "process"
+import {stderr,stdout} from "process";
+import { User } from "../models/user.model.js";
 
 
 
@@ -98,18 +99,45 @@ const uploadVideo=asyncHandler(async(req,res)=>{
     
 })
 
-const handleGetVideos=asyncHandler(async(req,res)=>{
-    const {id}=req.params;
-    try{
-        const AllVideos=await Video.find({owner:new mongoose.Types.ObjectId(id)});
-        console.log("Users video collection :",AllVideos);
+// const handleGetVideos=asyncHandler(async(req,res)=>{
+//     const {id}=req.params;
+//     try{
+//         const AllVideos=await Video.find({owner:new mongoose.Types.ObjectId(id)});
+//         console.log("Users video collection :",AllVideos);
 
-        return res.status(200).json(new ApiResponse(200,AllVideos,"video fetching successfull"));
-    }
-    catch(error){
-        console.error(error);
-    }
-})
+//         return res.status(200).json(new ApiResponse(200,AllVideos,"video fetching successfull"));
+//     }
+//     catch(error){
+//         console.error(error);
+//     }
+// })
+
+const getVideosByUsername = asyncHandler(async (req, res) => {
+  let userId;
+
+  // If the request has an authenticated user, use their ID
+  if (req.user) {
+    userId = req.user._id;
+  } 
+  // If a username is provided in the route params, find the user by username
+  else if (req.params.username) {
+    const user = await User.findOne({ username: req.params.username });
+    if (!user) throw new ApiError(404, "User not found");
+    userId = user._id;
+  } 
+  // If neither an authenticated user nor a username is available, return an error
+  else {
+    throw new ApiError(400, "Username is required or user must be logged in");
+  }
+
+  console.log("Fetching videos for userId:", userId);
+
+  // Fetch videos belonging to the resolved user ID
+  const videos = await Video.find({ owner: userId }).sort({ createdAt: -1 });
+
+  res.json(new ApiResponse(200, videos, "Videos fetched successfully"));
+});
+
 
 
 const randomVideos=asyncHandler(async(req,res)=>{
@@ -197,7 +225,7 @@ const toggleReaction = asyncHandler(async (req, res) => {
 
    
 
-export {uploadVideo,handleGetVideos,randomVideos,videoOwnerInfo,toggleReaction}
+export {uploadVideo,getVideosByUsername,randomVideos,videoOwnerInfo,toggleReaction}
 
 
 

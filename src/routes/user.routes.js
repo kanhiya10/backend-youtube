@@ -35,8 +35,8 @@ router.route("/update-account").patch(verifyJWT,updateAccountDetails)
 router.route("/avatar").patch(verifyJWT,upload.single("avatar"),updateUsersAvatar)//verifyJWT
 router.route("/cover-image").patch(verifyJWT,upload.single("coverImage"),updateUsersCoverImage)
 // router.route("/channel/:username").get(verifyJWT,getUserChannelProfile)
-router.route("/history/:userId/:videoId").post(verifyJWT, setWatchHistory);
-router.route("/GetHistory/:userId").get(verifyJWT, getWatchHistory);
+router.route("/history/:videoId").post(verifyJWT, setWatchHistory);
+router.route("/GetHistory").get(verifyJWT, getWatchHistory);
 router.route("/ClearHistory/:userId").get(verifyJWT, ClearHistory);
 // router.route("/testing").get(testing)
 router.route("/visitChannel/:username").post(visitChannel)

@@ -4,7 +4,7 @@ import {upload} from "../middleware/multer.middleware.js";
 
 import { verifyJWT } from "../middleware/auth.middleware.js";
 
-import { uploadVideo,handleGetVideos,randomVideos,videoOwnerInfo,toggleReaction } from "../controllers/video.controller.js";
+import { uploadVideo,getVideosByUsername,randomVideos,videoOwnerInfo,toggleReaction } from "../controllers/video.controller.js";
 
 
 const router=Router();
@@ -21,7 +21,11 @@ router.route("/uploadVideo").post(verifyJWT,upload.fields([
 ])
     ,uploadVideo)
 
-router.route("/handleGetVideos/:id").post(verifyJWT,handleGetVideos)
+// router.route("/handleGetVideos/:id").post(verifyJWT,handleGetVideos)
+
+router.route("/user").get(verifyJWT, getVideosByUsername);
+router.route("/user/:username").get(getVideosByUsername);
+
 
 router.route("/randomVideos").get(randomVideos)
 

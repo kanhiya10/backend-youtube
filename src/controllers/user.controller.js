@@ -349,13 +349,16 @@ const updateUsersCoverImage=asyncHandler(async(req,res)=>{
 
 const setWatchHistory=asyncHandler(async(req,res)=>{
 
-    const{userId,videoId}=req.params;
+    const userId=req.user._id;
+    const{videoId}=req.params;
 
-    console.log(userId,videoId);
+    console.log('this is userId :',userId,'this is videoId',videoId);
+
    
         const user = await User.findById(userId);
         if (user) {
             user.watchHistory.push(videoId);
+            console.log('this is the user watch history',user.watchHistory);
             await user.save();
             console.log('Video added to watch history.');
         } else {
@@ -370,15 +373,22 @@ const setWatchHistory=asyncHandler(async(req,res)=>{
 
 const getWatchHistory=asyncHandler(async(req,res)=>{
 
-    const {userId}=req.params;
+    const userId=req.user._id;
+    console.log("this is the userId",userId);
     try {
         // Find the user by ID and populate the watchHistory field
-        const user = await User.findById(userId).populate('watchHistory');
+        const user = await User.findById(userId).populate({
+            path: 'watchHistory',
+            options: { limit: 10, sort: { createdAt: -1 } }, // latest first
+          });
+          
     
         if (!user) {
           console.log('User not found');
           return;
         }
+        
+
     
         console.log('User Watch History:', user.watchHistory);
     
