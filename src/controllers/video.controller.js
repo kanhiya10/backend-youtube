@@ -16,6 +16,8 @@ import { User } from "../models/user.model.js";
 
 const uploadVideo=asyncHandler(async(req,res)=>{
 
+  console.log('upload video fn is working');
+
     const{title,description,views,isPublished}=req.body;
 
     if(

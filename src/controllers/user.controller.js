@@ -50,6 +50,7 @@ const existedUser=await User.findOne({
 })
 
 if(existedUser){
+    console.log('existedUser:',existedUser);
     throw new ApiError(409,"User with email or username already exists")
 }
 
@@ -234,11 +235,22 @@ const refreshAccessToken=asyncHandler(async(req,res)=>{
 const changeCurrentPassword=asyncHandler(async(req,res)=>{
     console.log("process started");
 
-    const{oldPassword,newPassword}=req.body;
+    const{currentPassword,newPassword}=req.body;
 
     const user=await User.findById(req.user?._id)
 
-    const isPasswordValid=await user.isPasswordCorrect(oldPassword)
+    console.log('currentPassword',currentPassword,'newPassword',newPassword);
+    console.log("this is the user",user);
+
+    if(!user){
+        throw new ApiError(404,"user does't exist") 
+    }
+    if(!currentPassword || !newPassword){
+        throw new ApiError(400,"All fields are required")   
+    }
+    console.log("this is the user",user);
+
+    const isPasswordValid=await user.isPasswordCorrect(currentPassword)
 
     if(!isPasswordValid){
         throw new ApiError(400,"Invalid oldPassword")
