@@ -172,12 +172,6 @@ const logoutUser=asyncHandler(async(req,res)=>{
         }
     )
 
-        //for development purpose only
-    // const options={
-    //     httpOnly: true,      // Ensures the cookie is only accessible by the web server
-    //     secure: false,       // Set to true if you're using HTTPS; false for localhost
-    //     sameSite: 'Lax',      // Controls when cookies are sent with cross-site requests
-    // }
 
     // for production purpose only
     const options={
