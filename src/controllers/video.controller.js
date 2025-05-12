@@ -60,7 +60,7 @@ const uploadVideo=asyncHandler(async(req,res)=>{
     }
     console.log(`stdout: ${stdout}`)
     console.log(`stderr: ${stderr}`)
-    const videoUrl = `http://localhost:8000/uploads/courses/${lessonId}/index.m3u8`;
+    const videoUrl = `https://backend-youtube-zba1.onrender.com/uploads/courses/${lessonId}/index.m3u8`;
 })
 
 
