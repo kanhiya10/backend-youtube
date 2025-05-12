@@ -138,10 +138,15 @@ const loginUser=asyncHandler(async(req,res)=>{
 
     const loggedInUser=await User.findById(user._id).select("-password -refreshToken")//select is used to exclude values
 
+    // const options={
+    //     httpOnly: true,      // Ensures the cookie is only accessible by the web server
+    //     secure: false,       // Set to true if you're using HTTPS; false for localhost
+    //     sameSite: 'Lax',      // Controls when cookies are sent with cross-site requests
+    // }/
     const options={
-        httpOnly: true,      // Ensures the cookie is only accessible by the web server
-        secure: false,       // Set to true if you're using HTTPS; false for localhost
-        sameSite: 'Lax',      // Controls when cookies are sent with cross-site requests
+        httpOnly: true,      
+        secure: true,      
+        sameSite: 'none',     
     }
 
     return res
