@@ -11,95 +11,102 @@ import fs from 'fs';
 import {exec} from 'child_process';
 import {stderr,stdout} from "process";
 import { User } from "../models/user.model.js";
+import util from 'util';
 
+const execPromise = util.promisify(exec);
 
+async function getVideoDuration(filePath) {
+  try {
+    const { stdout } = await execPromise(`ffprobe -v error -show_entries format=duration -of csv=p=0 "${filePath}"`);
+    return parseFloat(stdout.trim());
+  } catch (err) {
+    console.error('Error getting video duration:', err);
+    return null;
+  }
+}
 
-const uploadVideo=asyncHandler(async(req,res)=>{
-
+const uploadVideo = asyncHandler(async (req, res) => {
   console.log('upload video fn is working');
 
-    const{title,description,views,isPublished}=req.body;
+  const { title, description, views, isPublished } = req.body;
 
-    if(
-        [title,description,views,isPublished].some((field)=>field?.trim()==="")
-    ){
-        throw new ApiError(400,"All fields are required")
-    }
-    
+  if ([title, description, views, isPublished].some((field) => field?.trim() === "")) {
+    throw new ApiError(400, "All fields are required");
+  }
 
-    const lessonId=uuidv4();
+  const lessonId = uuidv4();
 
-    const videoLocalPath=req.files?.video[0].path;
+  const videoLocalPath = req.files?.video?.[0]?.path;
+  const thumbnailLocalPath = req.files?.thumbnail?.[0]?.path;
 
-    const thumbnailLocalPath=req.files?.thumbnail[0].path;
+  if (!videoLocalPath) throw new ApiError(400, "Video file is missing");
+  if (!thumbnailLocalPath) throw new ApiError(400, "Thumbnail file is missing");
 
-    if(!videoLocalPath){
-        throw new ApiError(400,"Video file is missing");
-    }
+  const outputPath = `./public/temp/course/${lessonId}`;
+  const hlsPath = `${outputPath}/index.m3u8`;
 
-    if(!thumbnailLocalPath){
-        throw new ApiError(400,"thumbnail file is missing");
-    }
+  if (!fs.existsSync(outputPath)) {
+    fs.mkdirSync(outputPath, { recursive: true });
+  }
 
-    const outputPath=`./public/temp/course/${lessonId}}`;
-    const hlsPath=`${outputPath}/index.m3u8`
+  const ffmpegCommand = `ffmpeg -i "${videoLocalPath}" -codec:v libx264 -codec:a aac -hls_time 10 -hls_playlist_type vod -hls_segment_filename "${outputPath}/segment%03d.ts" -start_number 0 "${hlsPath}"`;
 
-    console.log('hlsPath',hlsPath);
+  exec(ffmpegCommand, async (error, stdout, stderr) => {
+    try {
+      if (error) {
+        console.error(`FFmpeg error: ${error}`);
+        fs.unlinkSync(videoLocalPath);
+        fs.unlinkSync(thumbnailLocalPath);
+        return res.status(500).json({ error: "Error during video processing" });
+      }
 
-    if(!fs.existsSync(outputPath)){
-        fs.mkdirSync(outputPath,{recursive:true});
-    }
+      const videoUrl = `http://localhost:8000/uploads/course/${lessonId}/index.m3u8`;
 
+      const thumbnailUpload = await UploadOnCloudinary(thumbnailLocalPath);
+      if (!thumbnailUpload?.url) {
+        fs.unlinkSync(videoLocalPath);
+        fs.unlinkSync(thumbnailLocalPath);
+        return res.status(400).json({ error: "Failed to upload thumbnail to Cloudinary" });
+      }
 
-    const ffmpegCommand = `ffmpeg -i ${videoLocalPath} -codec:v libx264 -codec:a aac -hls_time 10 -hls_playlist_type 
-    vod -hls_segment_filename "${outputPath}/segment%03d.ts" -start_number 0 ${hlsPath}`;
+      const duration = await getVideoDuration(videoLocalPath);
 
-    exec(ffmpegCommand, (error, stdout, stderr) => {
-    if (error) {
-      console.log(`exec error: ${error}`)
-    }
-    console.log(`stdout: ${stdout}`)
-    console.log(`stderr: ${stderr}`)
-    const videoUrl = `https://backend-youtube-zba1.onrender.com/uploads/courses/${lessonId}/index.m3u8`;
-})
-
-
-
-   
-
-    // const videoUpload=await UploadOnCloudinary();
-
-    // const thumbnailUpload=await UploadOnCloudinary(thumbnailLocalPath);
-
-    // if(!videoUpload.url){
-    //     throw new ApiError(400,"Error while uploading video on cloudinary")
-    // }
-
-    // if(!thumbnailUpload.url){
-    //     throw new ApiError(400,"Error while uploading thumbnail on cloudinary")
-    // }
-
-    // console.log('videoUpload',videoUpload);
-    // console.log('thumbnailUpload',thumbnailUpload);
-
-    const video=await Video.create({
+      const video = await Video.create({
         title,
         description,
-        videoFile:videoUpload.url,
-        thumbnail:thumbnailUpload.url,
-        duration:videoUpload.duration,
+        videoFile: videoUrl,
+        thumbnail: thumbnailUpload.url,
+        duration,
         views,
         isPublished,
-        owner:req.user?._id
+        owner: req.user?._id,
+      });
 
-    })
+      console.log('Video instance created in DB');
 
-    console.log('instance created');
+      if (fs.existsSync(videoLocalPath)) {
+        fs.unlinkSync(videoLocalPath);
+      }
+      if (fs.existsSync(thumbnailLocalPath)) {
+        fs.unlinkSync(thumbnailLocalPath);
+      }
+      
+
+      return res.status(201).json({
+        message: "Video uploaded and processed successfully",
+        video,
+      });
+    } catch (err) {
+      console.error("Unexpected error:", err);
+      // Cleanup in case of unexpected error
+      if (fs.existsSync(videoLocalPath)) fs.unlinkSync(videoLocalPath);
+      if (fs.existsSync(thumbnailLocalPath)) fs.unlinkSync(thumbnailLocalPath);
+      return res.status(500).json({ error: "Unexpected error during upload" });
+    }
+  });
+});
 
 
-
-    
-})
 
 // const handleGetVideos=asyncHandler(async(req,res)=>{
 //     const {id}=req.params;

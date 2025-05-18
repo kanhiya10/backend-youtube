@@ -1,6 +1,12 @@
 import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+// Recreate __dirname in ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app=express();//An instance of the Express application
 
@@ -11,7 +17,7 @@ app.use(cookieParser());
 
 app.use(cors({
     // origin:process.env.Cors_Origin,
-    origin:'https://frontend-youtube-three.vercel.app',
+    origin:'http://localhost:5173',
     credentials:true,
 }))
 // This configuration allows requests from the origin specified in process.env.Cors_Origin and includes credentials (cookies, authorization headers, etc.) in cross-origin requests.
@@ -21,6 +27,8 @@ app.use(express.json({limit:"16kb"}))
 
 //to handle data through url
 app.use(express.urlencoded())
+
+app.use('/uploads/course', express.static(path.join(__dirname, '../public/temp/course')));
 
 app.use(express.static('public'))
 
