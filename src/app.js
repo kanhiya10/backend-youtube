@@ -47,6 +47,10 @@ import viewVideoRouter from "./routes/viewVideo.routes.js";
 
 import streamRouter from "./routes/stream.routes.js";
 
+import commentRouter from "./routes/comment.routes.js";
+
+import notificationRouter from "./routes/notification.routes.js";
+
 
 app.use("/api/v1/users", userRouter);
 
@@ -57,5 +61,9 @@ app.use("/api/v1/subscription",subscriptionRouter)
 app.use("/api/v1/viewVideo",viewVideoRouter)
 
 app.use("/api/v1/stream",streamRouter)
+
+app.use("/api/v1/comments", commentRouter);
+
+app.use("/api/v1/notifications", notificationRouter);
 
 export {app};

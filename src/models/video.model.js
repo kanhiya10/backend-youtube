@@ -52,6 +52,16 @@ const videoSchema=new Schema(
 },{timestamps:true}
 )
 
+videoSchema.virtual('comments', {
+  ref: 'Comment',
+  localField: '_id',
+  foreignField: 'video'
+});
+
+videoSchema.set('toObject', { virtuals: true });
+videoSchema.set('toJSON', { virtuals: true });
+
+
 
 videoSchema.plugin(mongooseAggregatePaginate);
 export const Video=mongoose.model("Video",videoSchema);
