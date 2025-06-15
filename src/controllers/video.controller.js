@@ -12,6 +12,9 @@ import {exec} from 'child_process';
 import {stderr,stdout} from "process";
 import { User } from "../models/user.model.js";
 import util from 'util';
+import { sendVideoUploadNotification } from "../utils/videoUploadNotification.js";
+import { Subscription } from "../models/subscription.model.js";
+import { Notification } from "../models/notificationEntries.model.js";
 
 const execPromise = util.promisify(exec);
 
@@ -62,10 +65,18 @@ const uploadVideo = asyncHandler(async (req, res) => {
 
       const videoUrl = `http://localhost:8000/uploads/course/${lessonId}/index.m3u8`;
 
-      const thumbnailUpload = await UploadOnCloudinary(thumbnailLocalPath);
+      const thumbnailUpload = await UploadOnCloudinary(thumbnailLocalPath, [
+  { width: 480, height: 270, crop: 'fill', gravity: 'auto' }
+]);
+
       if (!thumbnailUpload?.url) {
-        fs.unlinkSync(videoLocalPath);
-        fs.unlinkSync(thumbnailLocalPath);
+       if (fs.existsSync(videoLocalPath)) {
+  fs.unlinkSync(videoLocalPath);
+}
+if (fs.existsSync(thumbnailLocalPath)) {
+  fs.unlinkSync(thumbnailLocalPath);
+}
+
         return res.status(400).json({ error: "Failed to upload thumbnail to Cloudinary" });
       }
 
@@ -83,6 +94,30 @@ const uploadVideo = asyncHandler(async (req, res) => {
       });
 
       console.log('Video instance created in DB');
+
+      const subscriptions = await Subscription.find({ channel: req.user._id }).select('subscriber');
+
+      if (!subscriptions || subscriptions.length === 0) {
+        console.log('No subscriptions found for this user');
+      } else {
+        console.log('Subscriptions found:', subscriptions);
+
+        const dbNotifications = subscriptions.map((sub) => ({
+          user: sub.subscriber,           // Receiver of the notification
+          actor: req.user._id,            // Creator/uploader
+          type: 'videoUpload',
+          title: 'New Video Uploaded!',
+          body: `${title} is now live.`,
+          data: {video},
+        }));
+
+        if (dbNotifications.length) {
+          await Notification.insertMany(dbNotifications);
+        }
+        console.log('saved notifications in DB');
+      }
+
+      await sendVideoUploadNotification(req.user._id, title, video._id);
 
       if (fs.existsSync(videoLocalPath)) {
         fs.unlinkSync(videoLocalPath);
@@ -154,7 +189,7 @@ const randomVideos=asyncHandler(async(req,res)=>{
     console.log(' random videos fn is working ')
 
     try{
-        const randomVideos = await Video.aggregate([{ $sample: { size: 5 } }]);//to randomly fetch videos
+        const randomVideos = await Video.aggregate([{ $sample: { size: 10 } }]);//to randomly fetch videos
 
         return res.status(200).json(new ApiResponse(200,randomVideos,"random videos fetched successfully"))
     }

@@ -4,6 +4,7 @@ import {Comment} from "../models/comment.model.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { getCommentWithReplies } from "../utils/fetchReplies.js";
+// import { getCommentWithReplies } from "../utils/fetchReplies.js";
 
 export const createComment = asyncHandler(async (req, res, next) => {
   const { text, videoId } = req.body;
@@ -28,30 +29,30 @@ export const createComment = asyncHandler(async (req, res, next) => {
     .json(new ApiResponse(201, comment, "Comment created successfully"));
 });
 
-export const getCommentsByVideo = asyncHandler(async (req, res, next) => {
-  const videoId = req.params.videoId;
-  console.log("videoId inside getCommentsByVideo:", videoId);
+// export const getCommentsByVideo = asyncHandler(async (req, res, next) => {
+//   const videoId = req.params.videoId;
+//   console.log("videoId inside getCommentsByVideo:", videoId);
 
-  if (!videoId) {
-    return next(new ApiError(400, "Video ID is required"));
-  }
+//   if (!videoId) {
+//     return next(new ApiError(400, "Video ID is required"));
+//   }
 
- const comments = await Comment.find({ video: videoId, parentComment: null })
-  .populate("user", "fullName avatar")
-  .populate({
-    path: "replies",
-    populate: {
-      path: "user",
-      select: "fullName avatar",
-    },
-  });
+//  const comments = await Comment.find({ video: videoId, parentComment: null })
+//   .populate("user", "fullName avatar")
+//   .populate({
+//     path: "replies",
+//     populate: {
+//       path: "user",
+//       select: "fullName avatar",
+//     },
+//   });
 
 
 
-  return res
-    .status(200)
-    .json(new ApiResponse(200, comments, "Comments fetched successfully"));
-});
+//   return res
+//     .status(200)
+//     .json(new ApiResponse(200, comments, "Comments fetched successfully"));
+// });
 
 export const replyToComment = asyncHandler(async (req, res) => {
   const { text, videoId } = req.body;
@@ -137,14 +138,36 @@ export const toggleCommentDislike = asyncHandler(async (req, res) => {
 });
 
 
-export const getCommentThread = asyncHandler(async (req, res) => {
-  const { commentId } = req.params;
+// export const getCommentThread = asyncHandler(async (req, res) => {
+//   const { commentId } = req.params;
 
-  const commentThread = await getCommentWithReplies(commentId);
+//   const commentThread = await getCommentWithReplies(commentId);
 
-  if (!commentThread) {
-    throw new ApiError(404, "Comment not found");
+//   if (!commentThread) {
+//     throw new ApiError(404, "Comment not found");
+//   }
+
+//   res.status(200).json(new ApiResponse(200, commentThread, "Comment thread fetched"));
+// });
+
+
+export const getCommentsForVideo = asyncHandler(async (req, res) => {
+  const videoId = req.params.videoId;
+  if (!videoId) {
+    throw new ApiError(400, "Video ID is required");
   }
+  const rootComments = await Comment.find({
+    video: videoId,
+    parentComment: null,
+  })
+    .populate("user", "name")
+    .lean();
 
-  res.status(200).json(new ApiResponse(200, commentThread, "Comment thread fetched"));
+  const nestedComments = await Promise.all(
+    rootComments.map(comment => getCommentWithReplies(comment._id))
+  );
+
+  // console.log("nestedComments:", nestedComments);
+
+  res.status(200).json(new ApiResponse(200, nestedComments, "Comments fetched successfully"));
 });

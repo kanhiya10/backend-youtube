@@ -1,27 +1,34 @@
 // routes/notifications.js
 import express from 'express';
 import { getMessaging } from 'firebase-admin/messaging';
+import { saveTokenHandler,subscribeToTopic,unsubscribeFromTopic,getSubscribedTopics,deactivateToken, fetchUsersNotifications } from '../controllers/notification.controller.js';
+import { verifyJWT } from '../middleware/auth.middleware.js';
 
 const router = express.Router();
 
-/**
- * @route POST /api/send-notification
- * @desc Send push notification to a user
- * @body { token: string, title: string, body: string }
- */
-router.post('/send-notification', async (req, res) => {
-  const { token, title, body } = req.body;
+router.get('/topics', (req, res) => {
+  res.json({
+    topics: ['news', 'offers', 'alerts']
+  });
+});
 
-  if (!token || !title || !body) {
-    return res.status(400).json({ error: 'token, title, and body are required.' });
-  }
+
+router.post('/send-topic-notification', async (req, res) => {
+  const { title, body } = req.body;
+
+if (!title || !body) {
+  return res.status(400).json({ error: 'Title and body are required.' });
+}
+
+
+  const topic = 'highScores';
 
   const message = {
     notification: {
       title,
       body,
     },
-    token,
+    topic,
   };
 
   try {
@@ -32,5 +39,12 @@ router.post('/send-notification', async (req, res) => {
     return res.status(500).json({ error: 'Failed to send notification', details: error.message });
   }
 });
+
+router.route('/subscribe').post(verifyJWT, subscribeToTopic);
+router.route('/unsubscribe').post(verifyJWT,unsubscribeFromTopic);
+router.route('/token-topics').get(verifyJWT,getSubscribedTopics);
+router.route('/deactivate-token').post(verifyJWT,deactivateToken);
+router.route('/save-token').post(verifyJWT,saveTokenHandler);
+router.route('/fetchUserNotifications').get(verifyJWT,fetchUsersNotifications);
 
 export default router;
