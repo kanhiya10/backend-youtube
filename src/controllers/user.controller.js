@@ -6,9 +6,10 @@ import { User } from "../models/user.model.js";
 import { RemoveFromCloudinary, UploadOnCloudinary } from "../utils/cloudinary.js";
 import jwt from "jsonwebtoken";
 import mongoose from "mongoose";
+import { OAuth2Client } from "google-auth-library";
 // import { trusted } from "mongoose";
 
-
+const client = new OAuth2Client(process.env.clientId);
 
 const generateAccessAndRefereshToken=async(userId)=>{
     try{
@@ -25,6 +26,65 @@ const generateAccessAndRefereshToken=async(userId)=>{
         throw new ApiError(500,"Something went wrong while generating access and refresh token")
     }
 }
+
+const googleLogin = asyncHandler(async (req, res) => {
+
+    console.log("Google login initiated");
+  const { idToken } = req.body;
+
+  const ticket = await client.verifyIdToken({
+    idToken,
+    
+  });
+
+  const payload = ticket.getPayload();
+  const { email, name, picture } = payload;
+
+  let user = await User.findOne({ email });
+
+ const defaultCoverImage="https://res.cloudinary.com/dl2eospm1/image/upload/v1750020129/default_akok6c.jpg";
+
+  if (!user) {
+    user = await User.create({
+      fullName: name,
+      email,
+      username: email.split('@')[0],
+      avatar: picture,
+      coverImage: defaultCoverImage, // Set a default cover image
+      description: "Google user",
+      authProvider: "google",
+      password: "google_oauth", // dummy password
+    });
+  }
+
+  const { accessToken, refreshToken } = await generateAccessAndRefereshToken(user._id);
+
+   user.refreshToken = refreshToken;
+  await user.save({ validateBeforeSave: false });
+
+  const loggedInUser = await User.findById(user._id).select("-password -refreshToken");
+
+  const options = {
+    httpOnly: true,
+    secure: true,
+    sameSite: "none",
+  };
+
+    console.log("User logged in successfully using google:", loggedInUser);
+
+  return res
+    .status(200)
+    .cookie("accessToken", accessToken, options)
+    .cookie("refreshToken", refreshToken, options)
+    .json(
+      new ApiResponse(200, {
+        user: loggedInUser,
+        accessToken,
+        refreshToken,
+      }, "Google login successful")
+    );
+});
+
 
 
 const registerUser=asyncHandler(async(req,res)=>{
@@ -50,6 +110,7 @@ const existedUser=await User.findOne({
 })
 
 if(existedUser){
+    console.log('existedUser:',existedUser);
     throw new ApiError(409,"User with email or username already exists")
 }
 
@@ -66,14 +127,23 @@ if(!avatarLocalPath){
     throw new ApiError(400,"Avatar file is required");
 }
 
-const avatar=await UploadOnCloudinary(avatarLocalPath);
-const coverImage=await UploadOnCloudinary(coverImageLocalPath);
+console.log("here error is coming");
+const avatar = await UploadOnCloudinary(avatarLocalPath, [
+  { width: 200, height: 200, crop: 'thumb', gravity: 'face' }
+]);
+
+const coverImage = await UploadOnCloudinary(coverImageLocalPath, [
+  { width: 1200, height: 400, crop: 'fill', gravity: 'auto' }
+]);
+
 
 if(!avatar){
     if(!avatar){
         throw new ApiError(400,"Avatar file is required");
     }
 }
+
+console.log("this is the avatar",avatar);
 
 const user=await User.create({
     fullName,
@@ -125,6 +195,10 @@ const loginUser=asyncHandler(async(req,res)=>{
 
     console.log("line 142",password)
 
+      if (user.authProvider === "google") {
+    throw new ApiError(403, "Please login using Google Sign-In");
+  }
+
     const isPasswordValid=await user.isPasswordCorrect(password);//checks for the password saved in record
 
     // console.log("line 113",isPasswordValid);
@@ -137,10 +211,15 @@ const loginUser=asyncHandler(async(req,res)=>{
 
     const loggedInUser=await User.findById(user._id).select("-password -refreshToken")//select is used to exclude values
 
+    // const options={
+    //     httpOnly: true,      // Ensures the cookie is only accessible by the web server
+    //     secure: false,       // Set to true if you're using HTTPS; false for localhost
+    //     sameSite: 'Lax',      // Controls when cookies are sent with cross-site requests
+    // }/
     const options={
-        httpOnly: true,      // Ensures the cookie is only accessible by the web server
-        secure: false,       // Set to true if you're using HTTPS; false for localhost
-        sameSite: 'Lax',      // Controls when cookies are sent with cross-site requests
+        httpOnly: true,      
+        secure: true,      
+        sameSite: 'none',     
     }
 
     return res
@@ -171,10 +250,12 @@ const logoutUser=asyncHandler(async(req,res)=>{
         }
     )
 
+
+    // for production purpose only
     const options={
-        httpOnly: true,      // Ensures the cookie is only accessible by the web server
-        secure: false,       // Set to true if you're using HTTPS; false for localhost
-        sameSite: 'Lax', 
+        httpOnly: true,      
+        secure: true,      
+        sameSite: 'none',     
     }
 
     return res.status(200)
@@ -234,11 +315,22 @@ const refreshAccessToken=asyncHandler(async(req,res)=>{
 const changeCurrentPassword=asyncHandler(async(req,res)=>{
     console.log("process started");
 
-    const{oldPassword,newPassword}=req.body;
+    const{currentPassword,newPassword}=req.body;
 
     const user=await User.findById(req.user?._id)
 
-    const isPasswordValid=await user.isPasswordCorrect(oldPassword)
+    console.log('currentPassword',currentPassword,'newPassword',newPassword);
+    console.log("this is the user",user);
+
+    if(!user){
+        throw new ApiError(404,"user does't exist") 
+    }
+    if(!currentPassword || !newPassword){
+        throw new ApiError(400,"All fields are required")   
+    }
+    console.log("this is the user",user);
+
+    const isPasswordValid=await user.isPasswordCorrect(currentPassword)
 
     if(!isPasswordValid){
         throw new ApiError(400,"Invalid oldPassword")
@@ -349,13 +441,16 @@ const updateUsersCoverImage=asyncHandler(async(req,res)=>{
 
 const setWatchHistory=asyncHandler(async(req,res)=>{
 
-    const{userId,videoId}=req.params;
+    const userId=req.user._id;
+    const{videoId}=req.params;
 
-    console.log(userId,videoId);
+    console.log('this is userId :',userId,'this is videoId',videoId);
+
    
         const user = await User.findById(userId);
         if (user) {
             user.watchHistory.push(videoId);
+            console.log('this is the user watch history',user.watchHistory);
             await user.save();
             console.log('Video added to watch history.');
         } else {
@@ -370,15 +465,22 @@ const setWatchHistory=asyncHandler(async(req,res)=>{
 
 const getWatchHistory=asyncHandler(async(req,res)=>{
 
-    const {userId}=req.params;
+    const userId=req.user._id;
+    console.log("this is the userId",userId);
     try {
         // Find the user by ID and populate the watchHistory field
-        const user = await User.findById(userId).populate('watchHistory');
+        const user = await User.findById(userId).populate({
+            path: 'watchHistory',
+            options: { limit: 10, sort: { createdAt: -1 } }, // latest first
+          });
+          
     
         if (!user) {
           console.log('User not found');
           return;
         }
+        
+
     
         console.log('User Watch History:', user.watchHistory);
     
@@ -444,4 +546,4 @@ export {registerUser,loginUser,
     changeCurrentPassword,getCurrentUser,
     updateAccountDetails,updateUsersAvatar,
     updateUsersCoverImage,
-    setWatchHistory,visitChannel,getWatchHistory,ClearHistory}
+    setWatchHistory,visitChannel,getWatchHistory,ClearHistory,googleLogin}

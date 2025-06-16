@@ -9,107 +9,179 @@ import { v4 as uuidv4 } from "uuid";
 import path from "path";
 import fs from 'fs';
 import {exec} from 'child_process';
-import {stderr,stdout} from "process"
+import {stderr,stdout} from "process";
+import { User } from "../models/user.model.js";
+import util from 'util';
+import { sendVideoUploadNotification } from "../utils/videoUploadNotification.js";
+import { Subscription } from "../models/subscription.model.js";
+import { Notification } from "../models/notificationEntries.model.js";
 
+const execPromise = util.promisify(exec);
 
+async function getVideoDuration(filePath) {
+  try {
+    const { stdout } = await execPromise(`ffprobe -v error -show_entries format=duration -of csv=p=0 "${filePath}"`);
+    return parseFloat(stdout.trim());
+  } catch (err) {
+    console.error('Error getting video duration:', err);
+    return null;
+  }
+}
 
-const uploadVideo=asyncHandler(async(req,res)=>{
+const uploadVideo = asyncHandler(async (req, res) => {
+  console.log('upload video fn is working');
 
-    const{title,description,views,isPublished}=req.body;
+  const { title, description, views, isPublished } = req.body;
 
-    if(
-        [title,description,views,isPublished].some((field)=>field?.trim()==="")
-    ){
-        throw new ApiError(400,"All fields are required")
-    }
-    
+  if ([title, description, views, isPublished].some((field) => field?.trim() === "")) {
+    throw new ApiError(400, "All fields are required");
+  }
 
-    const lessonId=uuidv4();
+  const lessonId = uuidv4();
 
-    const videoLocalPath=req.files?.video[0].path;
+  const videoLocalPath = req.files?.video?.[0]?.path;
+  const thumbnailLocalPath = req.files?.thumbnail?.[0]?.path;
 
-    const thumbnailLocalPath=req.files?.thumbnail[0].path;
+  if (!videoLocalPath) throw new ApiError(400, "Video file is missing");
+  if (!thumbnailLocalPath) throw new ApiError(400, "Thumbnail file is missing");
 
-    if(!videoLocalPath){
-        throw new ApiError(400,"Video file is missing");
-    }
+  const outputPath = `./public/temp/course/${lessonId}`;
+  const hlsPath = `${outputPath}/index.m3u8`;
 
-    if(!thumbnailLocalPath){
-        throw new ApiError(400,"thumbnail file is missing");
-    }
+  if (!fs.existsSync(outputPath)) {
+    fs.mkdirSync(outputPath, { recursive: true });
+  }
 
-    const outputPath=`./public/temp/course/${lessonId}}`;
-    const hlsPath=`${outputPath}/index.m3u8`
+  const ffmpegCommand = `ffmpeg -i "${videoLocalPath}" -codec:v libx264 -codec:a aac -hls_time 10 -hls_playlist_type vod -hls_segment_filename "${outputPath}/segment%03d.ts" -start_number 0 "${hlsPath}"`;
 
-    console.log('hlsPath',hlsPath);
+  exec(ffmpegCommand, async (error, stdout, stderr) => {
+    try {
+      if (error) {
+        console.error(`FFmpeg error: ${error}`);
+        fs.unlinkSync(videoLocalPath);
+        fs.unlinkSync(thumbnailLocalPath);
+        return res.status(500).json({ error: "Error during video processing" });
+      }
 
-    if(!fs.existsSync(outputPath)){
-        fs.mkdirSync(outputPath,{recursive:true});
-    }
+      const videoUrl = `http://localhost:8000/uploads/course/${lessonId}/index.m3u8`;
 
+      const thumbnailUpload = await UploadOnCloudinary(thumbnailLocalPath, [
+  { width: 480, height: 270, crop: 'fill', gravity: 'auto' }
+]);
 
-    const ffmpegCommand = `ffmpeg -i ${videoLocalPath} -codec:v libx264 -codec:a aac -hls_time 10 -hls_playlist_type 
-    vod -hls_segment_filename "${outputPath}/segment%03d.ts" -start_number 0 ${hlsPath}`;
+      if (!thumbnailUpload?.url) {
+       if (fs.existsSync(videoLocalPath)) {
+  fs.unlinkSync(videoLocalPath);
+}
+if (fs.existsSync(thumbnailLocalPath)) {
+  fs.unlinkSync(thumbnailLocalPath);
+}
 
-    exec(ffmpegCommand, (error, stdout, stderr) => {
-    if (error) {
-      console.log(`exec error: ${error}`)
-    }
-    console.log(`stdout: ${stdout}`)
-    console.log(`stderr: ${stderr}`)
-    const videoUrl = `http://localhost:8000/uploads/courses/${lessonId}/index.m3u8`;
-})
+        return res.status(400).json({ error: "Failed to upload thumbnail to Cloudinary" });
+      }
 
+      const duration = await getVideoDuration(videoLocalPath);
 
-
-   
-
-    // const videoUpload=await UploadOnCloudinary();
-
-    // const thumbnailUpload=await UploadOnCloudinary(thumbnailLocalPath);
-
-    // if(!videoUpload.url){
-    //     throw new ApiError(400,"Error while uploading video on cloudinary")
-    // }
-
-    // if(!thumbnailUpload.url){
-    //     throw new ApiError(400,"Error while uploading thumbnail on cloudinary")
-    // }
-
-    // console.log('videoUpload',videoUpload);
-    // console.log('thumbnailUpload',thumbnailUpload);
-
-    const video=await Video.create({
+      const video = await Video.create({
         title,
         description,
-        videoFile:videoUpload.url,
-        thumbnail:thumbnailUpload.url,
-        duration:videoUpload.duration,
+        videoFile: videoUrl,
+        thumbnail: thumbnailUpload.url,
+        duration,
         views,
         isPublished,
-        owner:req.user?._id
+        owner: req.user?._id,
+      });
 
-    })
+      console.log('Video instance created in DB');
 
-    console.log('instance created');
+      const subscriptions = await Subscription.find({ channel: req.user._id }).select('subscriber');
 
+      if (!subscriptions || subscriptions.length === 0) {
+        console.log('No subscriptions found for this user');
+      } else {
+        console.log('Subscriptions found:', subscriptions);
 
+        const dbNotifications = subscriptions.map((sub) => ({
+          user: sub.subscriber,           // Receiver of the notification
+          actor: req.user._id,            // Creator/uploader
+          type: 'videoUpload',
+          title: 'New Video Uploaded!',
+          body: `${title} is now live.`,
+          data: {video},
+        }));
 
-    
-})
+        if (dbNotifications.length) {
+          await Notification.insertMany(dbNotifications);
+        }
+        console.log('saved notifications in DB');
+      }
 
-const handleGetVideos=asyncHandler(async(req,res)=>{
-    const {id}=req.params;
-    try{
-        const AllVideos=await Video.find({owner:new mongoose.Types.ObjectId(id)});
-        console.log("Users video collection :",AllVideos);
+      await sendVideoUploadNotification(req.user._id, title, video._id);
 
-        return res.status(200).json(new ApiResponse(200,AllVideos,"video fetching successfull"));
+      if (fs.existsSync(videoLocalPath)) {
+        fs.unlinkSync(videoLocalPath);
+      }
+      if (fs.existsSync(thumbnailLocalPath)) {
+        fs.unlinkSync(thumbnailLocalPath);
+      }
+      
+
+      return res.status(201).json({
+        message: "Video uploaded and processed successfully",
+        video,
+      });
+    } catch (err) {
+      console.error("Unexpected error:", err);
+      // Cleanup in case of unexpected error
+      if (fs.existsSync(videoLocalPath)) fs.unlinkSync(videoLocalPath);
+      if (fs.existsSync(thumbnailLocalPath)) fs.unlinkSync(thumbnailLocalPath);
+      return res.status(500).json({ error: "Unexpected error during upload" });
     }
-    catch(error){
-        console.error(error);
-    }
-})
+  });
+});
+
+
+
+// const handleGetVideos=asyncHandler(async(req,res)=>{
+//     const {id}=req.params;
+//     try{
+//         const AllVideos=await Video.find({owner:new mongoose.Types.ObjectId(id)});
+//         console.log("Users video collection :",AllVideos);
+
+//         return res.status(200).json(new ApiResponse(200,AllVideos,"video fetching successfull"));
+//     }
+//     catch(error){
+//         console.error(error);
+//     }
+// })
+
+const getVideosByUsername = asyncHandler(async (req, res) => {
+  let userId;
+
+  // If the request has an authenticated user, use their ID
+  if (req.user) {
+    userId = req.user._id;
+  } 
+  // If a username is provided in the route params, find the user by username
+  else if (req.params.username) {
+    const user = await User.findOne({ username: req.params.username });
+    if (!user) throw new ApiError(404, "User not found");
+    userId = user._id;
+  } 
+  // If neither an authenticated user nor a username is available, return an error
+  else {
+    throw new ApiError(400, "Username is required or user must be logged in");
+  }
+
+  console.log("Fetching videos for userId:", userId);
+
+  // Fetch videos belonging to the resolved user ID
+  const videos = await Video.find({ owner: userId }).sort({ createdAt: -1 });
+
+  res.json(new ApiResponse(200, videos, "Videos fetched successfully"));
+});
+
 
 
 const randomVideos=asyncHandler(async(req,res)=>{
@@ -117,7 +189,7 @@ const randomVideos=asyncHandler(async(req,res)=>{
     console.log(' random videos fn is working ')
 
     try{
-        const randomVideos = await Video.aggregate([{ $sample: { size: 5 } }]);//to randomly fetch videos
+        const randomVideos = await Video.aggregate([{ $sample: { size: 10 } }]);//to randomly fetch videos
 
         return res.status(200).json(new ApiResponse(200,randomVideos,"random videos fetched successfully"))
     }
@@ -197,7 +269,7 @@ const toggleReaction = asyncHandler(async (req, res) => {
 
    
 
-export {uploadVideo,handleGetVideos,randomVideos,videoOwnerInfo,toggleReaction}
+export {uploadVideo,getVideosByUsername,randomVideos,videoOwnerInfo,toggleReaction}
 
 
 

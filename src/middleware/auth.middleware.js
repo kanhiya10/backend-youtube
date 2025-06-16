@@ -22,6 +22,8 @@ try{
         throw new ApiError(401,"Invalid Access Token")
     }
 
+    console.log('okay report h')
+
     req.user=user
     next()
 
