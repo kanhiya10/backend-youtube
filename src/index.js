@@ -12,8 +12,9 @@ const __dirname = path.dirname(__filename);
 
 // Load Firebase
 const serviceAccount = JSON.parse(
-  fs.readFileSync(path.join(__dirname, './config/serviceAccount.json'), 'utf-8')
+  Buffer.from(process.env.FIREBASE_SERVICE_ACCOUNT_BASE64, 'base64').toString('utf-8')
 );
+
 initializeApp({
   credential: cert(serviceAccount)
 });
