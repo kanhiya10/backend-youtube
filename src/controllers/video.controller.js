@@ -63,7 +63,7 @@ const uploadVideo = asyncHandler(async (req, res) => {
         return res.status(500).json({ error: "Error during video processing" });
       }
 
-      const videoUrl = `http://localhost:8000/uploads/course/${lessonId}/index.m3u8`;
+      const videoUrl = `${import.meta.env.VITE_API_URL}/uploads/course/${lessonId}/index.m3u8`;
 
       const thumbnailUpload = await UploadOnCloudinary(thumbnailLocalPath, [
   { width: 480, height: 270, crop: 'fill', gravity: 'auto' }
