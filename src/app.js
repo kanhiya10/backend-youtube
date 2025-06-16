@@ -4,6 +4,7 @@ import cookieParser from "cookie-parser";
 import path from 'path';
 import { fileURLToPath } from 'url';
 
+
 // Recreate __dirname in ES modules
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -32,6 +33,7 @@ app.use('/uploads/course', express.static(path.join(__dirname, '../public/temp/c
 
 app.use(express.static('public'))
 
+
 // Serves static files (such as images, CSS, JavaScript files) from the public directory. This is useful for serving assets that are needed on the client side.
 
 
@@ -47,6 +49,14 @@ import viewVideoRouter from "./routes/viewVideo.routes.js";
 
 import streamRouter from "./routes/stream.routes.js";
 
+import commentRouter from "./routes/comment.routes.js";
+
+import notificationRouter from "./routes/notification.routes.js";
+
+import recommendationRouter from "./routes/recommend.routes.js";  
+
+import searchRouter from "./routes/search.routes.js";
+
 
 app.use("/api/v1/users", userRouter);
 
@@ -57,5 +67,13 @@ app.use("/api/v1/subscription",subscriptionRouter)
 app.use("/api/v1/viewVideo",viewVideoRouter)
 
 app.use("/api/v1/stream",streamRouter)
+
+app.use("/api/v1/comments", commentRouter);
+
+app.use("/api/v1/notifications", notificationRouter);
+
+app.use("/api/v1/recommendations", recommendationRouter);
+
+app.use("/api/v1/search",searchRouter);
 
 export {app};

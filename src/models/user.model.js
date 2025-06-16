@@ -32,6 +32,12 @@ const userSchema=new Schema(
         lowercase:true,
         index:true,
     },
+    authProvider: {
+    type: String,
+    enum: ['google', 'credentials'],
+    default: 'credentials',
+   },
+
     avatar:{
         type:String,// cloudinary url
         required:true,  

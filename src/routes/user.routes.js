@@ -2,7 +2,7 @@ import { Router } from "express";
 
 import { logoutUser,loginUser,registerUser,refreshAccessToken, changeCurrentPassword, 
     getCurrentUser, updateAccountDetails, updateUsersAvatar, updateUsersCoverImage, 
- setWatchHistory,visitChannel,getWatchHistory,ClearHistory } from "../controllers/user.controller.js";
+ setWatchHistory,visitChannel,getWatchHistory,ClearHistory,googleLogin } from "../controllers/user.controller.js";
 import {upload} from "../middleware/multer.middleware.js";
 
 import { verifyJWT } from "../middleware/auth.middleware.js";
@@ -39,7 +39,9 @@ router.route("/history/:videoId").post(verifyJWT, setWatchHistory);
 router.route("/GetHistory").get(verifyJWT, getWatchHistory);
 router.route("/ClearHistory/:userId").get(verifyJWT, ClearHistory);
 // router.route("/testing").get(testing)
-router.route("/visitChannel/:username").post(visitChannel)
+router.route("/visitChannel/:username").post(visitChannel);
+
+router.route("/google-login").post(googleLogin);
 
 // router.route("/uploadVideo").post(verifyJWT,upload.fields([
 //     {

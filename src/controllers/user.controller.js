@@ -6,9 +6,10 @@ import { User } from "../models/user.model.js";
 import { RemoveFromCloudinary, UploadOnCloudinary } from "../utils/cloudinary.js";
 import jwt from "jsonwebtoken";
 import mongoose from "mongoose";
+import { OAuth2Client } from "google-auth-library";
 // import { trusted } from "mongoose";
 
-
+const client = new OAuth2Client(process.env.clientId);
 
 const generateAccessAndRefereshToken=async(userId)=>{
     try{
@@ -25,6 +26,65 @@ const generateAccessAndRefereshToken=async(userId)=>{
         throw new ApiError(500,"Something went wrong while generating access and refresh token")
     }
 }
+
+const googleLogin = asyncHandler(async (req, res) => {
+
+    console.log("Google login initiated");
+  const { idToken } = req.body;
+
+  const ticket = await client.verifyIdToken({
+    idToken,
+    
+  });
+
+  const payload = ticket.getPayload();
+  const { email, name, picture } = payload;
+
+  let user = await User.findOne({ email });
+
+ const defaultCoverImage="https://res.cloudinary.com/dl2eospm1/image/upload/v1750020129/default_akok6c.jpg";
+
+  if (!user) {
+    user = await User.create({
+      fullName: name,
+      email,
+      username: email.split('@')[0],
+      avatar: picture,
+      coverImage: defaultCoverImage, // Set a default cover image
+      description: "Google user",
+      authProvider: "google",
+      password: "google_oauth", // dummy password
+    });
+  }
+
+  const { accessToken, refreshToken } = await generateAccessAndRefereshToken(user._id);
+
+   user.refreshToken = refreshToken;
+  await user.save({ validateBeforeSave: false });
+
+  const loggedInUser = await User.findById(user._id).select("-password -refreshToken");
+
+  const options = {
+    httpOnly: true,
+    secure: true,
+    sameSite: "none",
+  };
+
+    console.log("User logged in successfully using google:", loggedInUser);
+
+  return res
+    .status(200)
+    .cookie("accessToken", accessToken, options)
+    .cookie("refreshToken", refreshToken, options)
+    .json(
+      new ApiResponse(200, {
+        user: loggedInUser,
+        accessToken,
+        refreshToken,
+      }, "Google login successful")
+    );
+});
+
 
 
 const registerUser=asyncHandler(async(req,res)=>{
@@ -67,14 +127,23 @@ if(!avatarLocalPath){
     throw new ApiError(400,"Avatar file is required");
 }
 
-const avatar=await UploadOnCloudinary(avatarLocalPath);
-const coverImage=await UploadOnCloudinary(coverImageLocalPath);
+console.log("here error is coming");
+const avatar = await UploadOnCloudinary(avatarLocalPath, [
+  { width: 200, height: 200, crop: 'thumb', gravity: 'face' }
+]);
+
+const coverImage = await UploadOnCloudinary(coverImageLocalPath, [
+  { width: 1200, height: 400, crop: 'fill', gravity: 'auto' }
+]);
+
 
 if(!avatar){
     if(!avatar){
         throw new ApiError(400,"Avatar file is required");
     }
 }
+
+console.log("this is the avatar",avatar);
 
 const user=await User.create({
     fullName,
@@ -125,6 +194,10 @@ const loginUser=asyncHandler(async(req,res)=>{
     console.log("line 140",user.password)
 
     console.log("line 142",password)
+
+      if (user.authProvider === "google") {
+    throw new ApiError(403, "Please login using Google Sign-In");
+  }
 
     const isPasswordValid=await user.isPasswordCorrect(password);//checks for the password saved in record
 
@@ -473,4 +546,4 @@ export {registerUser,loginUser,
     changeCurrentPassword,getCurrentUser,
     updateAccountDetails,updateUsersAvatar,
     updateUsersCoverImage,
-    setWatchHistory,visitChannel,getWatchHistory,ClearHistory}
+    setWatchHistory,visitChannel,getWatchHistory,ClearHistory,googleLogin}

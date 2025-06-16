@@ -142,4 +142,6 @@ dist
 .svelte-kit
 
 # End of https://www.toptal.com/developers/gitignore/api/node
+
+# Ignore local service account credentials
 src/config/serviceAccount.json
