@@ -10,28 +10,32 @@ const generateUniqueStreamKey = () => {
 };
 
 const startStream = asyncHandler(async (req, res) => {
-    console.log("startStream");
   const { title, category } = req.body;
-
-  // Get userId from authenticated user
   const userId = req.user._id;
 
-  const streamKey = generateUniqueStreamKey();
-  console.log("streamKey",streamKey);
-  const stream = await Stream.findOneAndUpdate(
-    { userId },
-    {
-      streamKey,
-      title,
-      category,
-      isLive: true,
-      startedAt: new Date(),
-    },
-    { upsert: true, new: true }
-  );
+  const user = await User.findById(userId);
+  if (!user) throw new ApiError(404, "User not found");
 
-  res.status(200).json(new ApiResponse(200,{streamKey}, "Stream started successfully"));
+  if (!user.streamKey) {
+  user.streamKey = generateUniqueStreamKey();
+  await user.save();
+}
+
+
+  const streamKey = user.streamKey; // ✅ Reuse the same key
+
+  const stream = await Stream.create({
+    userId,
+    streamKey,
+    title,
+    category,
+    isLive: true,
+    startedAt: new Date(),
+  });
+
+  res.status(200).json(new ApiResponse(200, { streamKey }, "Stream started successfully"));
 });
+
 
 
 const getStreamByUsername = asyncHandler(async (req, res) => {
@@ -105,6 +109,16 @@ const getStreamByUsername = asyncHandler(async (req, res) => {
   
     res.json(new ApiResponse(200, pastStreams, "Past streams fetched"));
   });
+
+
+//   const regenerateStreamKey = asyncHandler(async (req, res) => {
+//   const userId = req.user._id;
+//   const newKey = generateUniqueStreamKey();
+
+//   const user = await User.findByIdAndUpdate(userId, { streamKey: newKey }, { new: true });
+//   res.status(200).json(new ApiResponse(200, { streamKey: user.streamKey }, "Stream key regenerated"));
+// });
+
   
   
   export { startStream, getStreamByUsername, stopStream, getPastStreamsByUsername };

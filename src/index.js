@@ -3,12 +3,21 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import dotenv from "dotenv";
 import connectDB from "./db/db.js";
+import http from "http";
 import { app } from "./app.js";
 import { initializeApp, cert } from 'firebase-admin/app';
 import trainModelFromDB, { net, isTrained } from "./utils/recommend.js";
+import {setupSocket,onlineUsers} from "./socket/index.js";
+import {startMessageConsumer} from "./kafka/consumer.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+const server = http.createServer(app);
+const io = setupSocket(server);
+
+// Start Kafka consumer with Socket.IO access
+startMessageConsumer(io,onlineUsers).catch(console.error);
 
 // Load Firebase
 const serviceAccount = JSON.parse(
@@ -35,7 +44,7 @@ connectDB()
     }
 
     // Start server
-    app.listen(process.env.PORT || 8000, () => {
+    server.listen(process.env.PORT || 8000, () => {
       console.log(`🚀 Server running at port: ${process.env.PORT || 8000}`);
     });
   })

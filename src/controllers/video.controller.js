@@ -264,12 +264,21 @@ const toggleReaction = asyncHandler(async (req, res) => {
       },
     });
   });
+
+
+const getSingleVideoById = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const video = await Video.findById(id);
+  if (!video) throw new ApiError(404, "Video not found");
+  res.status(200).json(new ApiResponse(200, video, "Video fetched successfully"));
+});
+
   
   
 
    
 
-export {uploadVideo,getVideosByUsername,randomVideos,videoOwnerInfo,toggleReaction}
+export {uploadVideo,getVideosByUsername,randomVideos,videoOwnerInfo,toggleReaction,getSingleVideoById}
 
 
 

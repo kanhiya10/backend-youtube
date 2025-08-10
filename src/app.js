@@ -18,7 +18,7 @@ app.use(cookieParser());
 
 app.use(cors({
     // origin:process.env.Cors_Origin,
-    origin: ['http://localhost:5173', 'http://localhost:8080'],
+    origin: ['http://localhost:5173', 'http://localhost:8080','http://localhost:9000'],
     credentials:true,
 }))
 // This configuration allows requests from the origin specified in process.env.Cors_Origin and includes credentials (cookies, authorization headers, etc.) in cross-origin requests.
@@ -57,6 +57,8 @@ import recommendationRouter from "./routes/recommend.routes.js";
 
 import searchRouter from "./routes/search.routes.js";
 
+import conversationRouter from "./routes/conversation.routes.js";
+
 
 app.use("/api/v1/users", userRouter);
 
@@ -75,5 +77,7 @@ app.use("/api/v1/notifications", notificationRouter);
 app.use("/api/v1/recommendations", recommendationRouter);
 
 app.use("/api/v1/search",searchRouter);
+
+app.use("/api/v1/conversations", conversationRouter);
 
 export {app};

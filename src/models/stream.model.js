@@ -1,7 +1,7 @@
 import mongoose, { Schema } from "mongoose";
 
 const StreamSchema = new Schema({
-  userId: { type: String, required: true },
+  userId: { type: Schema.Types.ObjectId, ref: "User", required: true },
   streamKey: { type: String, required: true },
   title: { type: String, required: true },
   category: { type: String, required: true },
