@@ -8,7 +8,7 @@ export function setupSocket(server) {
   const io = new Server(server, {
     path: "/socket.io/",
     cors: {
-      origin: "*", // ✅ must match your frontend
+      origin: "https://frontend-youtube-tghl.vercel.app", // ✅ must match your frontend
       methods: ["GET", "POST"],
       credentials: true,
     },
