@@ -17,7 +17,7 @@ const server = http.createServer(app);
 const io = setupSocket(server);
 
 // Start Kafka consumer with Socket.IO access
-startMessageConsumer(io,onlineUsers).catch(console.error);
+// startMessageConsumer(io,onlineUsers).catch(console.error);
 
 // Load Firebase
 const serviceAccount = JSON.parse(
