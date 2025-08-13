@@ -51,6 +51,17 @@ const userSchema=new Schema(
             ref:'Video',
         }
     ],
+    isOnline: {
+     type: Boolean,
+     default: false,
+    },
+    lastSeen: {
+     type: Date,
+    },
+    streamKey: { 
+        type: String,
+        required: true
+ },
     password:{
         type:String,
         required:[true,'Password is required'],

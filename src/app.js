@@ -57,6 +57,8 @@ import recommendationRouter from "./routes/recommend.routes.js";
 
 import searchRouter from "./routes/search.routes.js";
 
+import conversationRouter from "./routes/conversation.routes.js";
+
 
 app.use("/api/v1/users", userRouter);
 
@@ -75,5 +77,7 @@ app.use("/api/v1/notifications", notificationRouter);
 app.use("/api/v1/recommendations", recommendationRouter);
 
 app.use("/api/v1/search",searchRouter);
+
+app.use("/api/v1/conversations", conversationRouter);
 
 export {app};
