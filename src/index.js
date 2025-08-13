@@ -8,7 +8,6 @@ import { app } from "./app.js";
 import { initializeApp, cert } from 'firebase-admin/app';
 import trainModelFromDB, { net, isTrained } from "./utils/recommend.js";
 import {setupSocket,onlineUsers} from "./socket/index.js";
-import {startMessageConsumer} from "./kafka/consumer.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

@@ -1,5 +1,4 @@
 import { Server } from "socket.io";
-import { produceMessage } from "../kafka/producer.js";
 import { Conversation } from "../models/conversation.model.js";
 import { Message } from "../models/realTimeMessages.js";
 
