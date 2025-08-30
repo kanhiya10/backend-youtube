@@ -1,92 +1,130 @@
-// src/controllers/recommendation.controller.js
-import brain from 'brain.js';
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
+// recommendation.controller.js - FIXED VERSION
+import { predict, getModelStats } from '../utils/recommend.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { Video } from '../models/video.model.js';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const modelPath = path.join(__dirname, '../../trainedModel.json');
-let net = null;
-let isModelLoaded = false;
+export const predictVideo = asyncHandler(async (req, res) => {
+  const userId = req.user._id.toString();
+  const { videoId } = req.params;
 
-const loadModel = () => {
-  console.log('Looking for model at:', modelPath);
+  console.log("🔎 Prediction request:");
+  console.log("   ➤ User ID:", userId);
+  console.log("   ➤ Video ID:", videoId);
 
-  if (!fs.existsSync(modelPath)) {
-    throw new Error(`Model file not found at ${modelPath}`);
-  }
+  const output = predict(userId, videoId);
+  console.log("✅ Model Output:", output);
 
-  const trainedModelJSON = JSON.parse(fs.readFileSync(modelPath, 'utf8'));
-  net = new brain.NeuralNetwork();
-  net.fromJSON(trainedModelJSON);
-  isModelLoaded = true;
-  console.log('✅ Model loaded in controller');
-};
+  res.json({ 
+    success: true, 
+    prediction: output,
+    modelStats: getModelStats()
+  });
+});
 
-export const predictVideo = (req, res) => {
-  try {
-    if (!isModelLoaded) {
-      loadModel(); // Lazy-load the model when the route is first hit
-    }
+// recommendation.controller.js mein ye change karo
 
-    const { userId, videoId } = req.params;
-
-    const input = {
-      [userId]: 1,
-      [videoId]: 1,
-    };
-
-    const output = net.run(input); // { like: 0.92 } for example
-
-    res.json({ success: true, prediction: output });
-  } catch (err) {
-    console.error('Prediction error:', err.message);
-    res.status(500).json({ success: false, message: err.message });
-  }
-};
-
-
-export async function getCandidateVideos() {
-  // Fetch recent 50 videos as candidates
-  const videos = await Video.find()
-    .sort({ createdAt: -1 }) // latest first
-    .limit(5)
-    .lean(); // convert to plain JS objects for faster reads
-
-  return videos;
-}
-
-export const getRecommendedVideos=asyncHandler(async(req, res) => {
-
-    if (!isModelLoaded) {
-     loadModel(); // wait for model to load before proceeding
-  }
-  const userId  = req.user._id;
+export const getRecommendedVideos = asyncHandler(async (req, res) => {
+  const userId = req.user._id.toString();
   console.log(`🔍 Fetching recommendations for user ${userId}`);
-  if (!userId) {
-    return res.status(400).json({ success: false, message: 'User ID is required' });
-  }
-  const candidateVideos = await getCandidateVideos(); // e.g., from DB, based on category or recency
-
+  
+  const candidateVideos = await getCandidateVideos();
   const scoredVideos = [];
 
   for (const video of candidateVideos) {
-    const input = { [userId]: 1, [video.id]: 1 };
-    const prediction = net.run(input);
-    scoredVideos.push({ video, score: prediction.like || 0 });
+    const prediction = predict(userId, video._id.toString());
+    
+    // Ab simple hai - prediction.like already number hai
+    const score = prediction.like || 0.5;
+    
+    scoredVideos.push({ 
+      video, 
+      score: score
+    });
   }
 
   scoredVideos.sort((a, b) => b.score - a.score);
 
   console.log(`🔍 Recommended ${scoredVideos.length} videos for user ${userId}`);
+  console.log('Top scores:', scoredVideos.slice(0, 3).map(v => ({
+    id: v.video._id,
+    title: v.video.title,
+    score: v.score.toFixed(3)
+  })));
 
   res.json({
-  success: true,
-  recommended: scoredVideos.slice(0, 3).map(v => v.video),
-});}
-);
+    success: true,
+    recommended: scoredVideos.slice(0, 4).map(v => ({
+      ...v.video,
+      recommendationScore: Number(v.score.toFixed(3))
+    }))
+  });
+});
 
+export async function getCandidateVideos() {
+  try {
+    // Fetch recent videos using your actual schema
+    const videos = await Video.find({ isPublished: true })
+      .sort({ createdAt: -1 })
+      .limit(20)
+      .select("_id title thumbnail videoFile views createdAt duration")
+      .lean();
+
+    console.log(`📹 Found ${videos.length} candidate videos`);
+    return videos;
+    
+  } catch (error) {
+    console.error('Error fetching candidate videos:', error);
+    return []; // Return empty array on error
+  }
+}
+
+// Additional utility function for debugging
+export const debugPrediction = asyncHandler(async (req, res) => {
+  const userId = req.user._id.toString();
+  const { videoId } = req.params;
+
+  console.log("🐛 Debug prediction:");
+  console.log("   ➤ User ID:", userId);
+  console.log("   ➤ Video ID:", videoId);
+
+  try {
+    const prediction = predict(userId, videoId);
+    console.log("   ➤ Raw prediction:", prediction);
+    console.log("   ➤ Prediction type:", typeof prediction);
+    console.log("   ➤ Is array?:", Array.isArray(prediction));
+    
+    let extractedScore;
+    if (prediction && typeof prediction === 'object' && !Array.isArray(prediction)) {
+      extractedScore = prediction.like;
+    } else if (Array.isArray(prediction)) {
+      extractedScore = prediction[0];
+    } else {
+      extractedScore = prediction;
+    }
+    
+    console.log("   ➤ Extracted score:", extractedScore);
+    console.log("   ➤ Score type:", typeof extractedScore);
+
+    res.json({
+      success: true,
+      rawPrediction: prediction,
+      extractedScore: extractedScore,
+      scoreType: typeof extractedScore,
+      isValidNumber: typeof extractedScore === 'number' && !isNaN(extractedScore),
+      modelStats: getModelStats()
+    });
+    
+  } catch (error) {
+    console.error("Debug prediction error:", error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      modelStats: getModelStats()
+    });
+  }
+});

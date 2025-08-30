@@ -7,6 +7,7 @@ import { RemoveFromCloudinary, UploadOnCloudinary } from "../utils/cloudinary.js
 import jwt from "jsonwebtoken";
 import mongoose from "mongoose";
 import { OAuth2Client } from "google-auth-library";
+import { refreshToken } from "firebase-admin/app";
 // import { trusted } from "mongoose";
 
 const client = new OAuth2Client(process.env.clientId);
@@ -242,7 +243,7 @@ const logoutUser=asyncHandler(async(req,res)=>{
             //     refreshToken:undefined
             // }
             $unset:{
-                refreshAccessToken:1//this removes the field from document.
+                refreshToken:1//this removes the field from document.
             }
         },
         {
@@ -268,7 +269,9 @@ const logoutUser=asyncHandler(async(req,res)=>{
 
 const refreshAccessToken=asyncHandler(async(req,res)=>{
 
-    const incomingRefreshToken=req.cookie?.refreshToken || req.body.refreshToken
+    console.log('access token refreshing starts');
+
+    const incomingRefreshToken=req.cookies?.refreshToken || req.body.refreshToken
     if(!incomingRefreshToken){
         throw new ApiError(401,"unauthorized request")
     }
@@ -278,6 +281,8 @@ const refreshAccessToken=asyncHandler(async(req,res)=>{
         // returns the payloaded data to decodeToken
     
         const user=await User.findById(decodeToken?._id)
+
+        console.log("this is the user inside refreshAccessToken",user);
     
         if(!user){
             throw new ApiError(401,"Invalid Refresh Token")
@@ -292,15 +297,16 @@ const refreshAccessToken=asyncHandler(async(req,res)=>{
             secure:true
         }
     
-        const {accessToken,refreshToken}=await generateAccessAndRefereshToken(user._id)
-    
+        const accessToken=await user.generateAccessToken();
+
+        console.log("new access token generated",accessToken); 
+
         return res
         .status(200)
         .cookie("accessToken",accessToken,options)
-        .cookie("refreshToken",refreshToken,options)
         .json(
             new ApiResponse(200,{
-                accessToken,refreshToken
+                accessToken,refreshToken:incomingRefreshToken
             },
         "access token refreshed successfully.")
         )

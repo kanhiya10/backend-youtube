@@ -43,19 +43,6 @@ router.route("/visitChannel/:username").post(visitChannel);
 
 router.route("/google-login").post(googleLogin);
 
-// router.route("/uploadVideo").post(verifyJWT,upload.fields([
-//     {
-//         name:'video',
-//         maxCount:1
-//     },
-//     {
-//         name:'thumbnail',
-//         maxCount:1
-//     }
-// ])
-//     ,uploadVideo)
-
-// router.route("/handleGetVideos").get(verifyJWT,handleGetVideos)
 
 
 export default router; 

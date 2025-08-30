@@ -9,7 +9,7 @@ export function setupSocket(server) {
     path: "/socket.io/",
     cors: {
       origin: "https://frontend-youtube-tghl.vercel.app", // ✅ must match your frontend
-      methods: ["GET", "POST"],
+      methods: ["GET", "POST"],    
       credentials: true,
     },
   });

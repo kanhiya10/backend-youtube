@@ -6,7 +6,8 @@ import connectDB from "./db/db.js";
 import http from "http";
 import { app } from "./app.js";
 import { initializeApp, cert } from 'firebase-admin/app';
-import trainModelFromDB, { net, isTrained } from "./utils/recommend.js";
+// import trainModelFromDB, { net, isTrained } from "./utils/recommend.js";
+import { initializeModel } from "./utils/recommend.js";
 import {setupSocket,onlineUsers} from "./socket/index.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -33,19 +34,14 @@ const modelPath = 'trainedModel.json';
 
 connectDB()
   .then(async () => {
-    // Load or train model
-    if (fs.existsSync(modelPath)) {
-      const savedModel = JSON.parse(fs.readFileSync(modelPath, 'utf8'));
-      net.fromJSON(savedModel);
-      console.log('✅ Model loaded from disk.');
-    } else {
-      console.log('🔁 No model found. Training...');
-      await trainModelFromDB();
-    }
+    // UPDATED MODEL INITIALIZATION - Use the new safer method
+    console.log('🔄 Initializing recommendation model...');
+    await initializeModel();
+    console.log('✅ Recommendation model ready!');
 
     // Start server
-    server.listen(process.env.PORT || 8000, () => {
-      console.log(`🚀 Server running at port: ${process.env.PORT || 8000}`);
+    server.listen(process.env.PORT || 8001, () => {
+      console.log(`🚀 Server running at port: ${process.env.PORT || 8001}`);
     });
   })
   .catch((err) => {

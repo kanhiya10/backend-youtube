@@ -13,11 +13,6 @@ const fcmTokenSchema = new Schema(
       required: true,
       unique: true, // One FCM token per document
     },
-    topics: [
-      {
-        type: String, // e.g., "news", "offers"
-      }
-    ],
     platform: {
       type: String,
       enum: ['web', 'android', 'ios'],
@@ -26,10 +21,6 @@ const fcmTokenSchema = new Schema(
     lastUsedAt: {
       type: Date,
       default: Date.now,
-    },
-    isActive: {
-      type: Boolean,
-      default: true, // You can set to false when user logs out or token is invalidated
     }
   },
   { timestamps: true }
