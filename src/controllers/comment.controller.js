@@ -1,9 +1,12 @@
 import express from "express";
 import { asyncHandler } from "../utils/asyncHandler.js";
-import {Comment} from "../models/comment.model.js";
+import { Comment } from "../models/comment.model.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { getCommentWithReplies } from "../utils/fetchReplies.js";
+import { Video } from "../models/video.model.js";
+import { User } from "../models/user.model.js";
+import { sendUserNotification } from "../utils/videoUploadNotification.js";
 // import { getCommentWithReplies } from "../utils/fetchReplies.js";
 
 export const createComment = asyncHandler(async (req, res, next) => {
@@ -14,6 +17,13 @@ export const createComment = asyncHandler(async (req, res, next) => {
     return next(new ApiError(400, "Text and videoId are required"));
   }
 
+  const video = await Video.findById(videoId).populate('owner', '_id');
+
+  if (!video) {
+    return res.status(404).json({ message: 'Video not found' });
+  }
+
+
   const comment = await Comment.create({
     text,
     video: videoId,
@@ -23,6 +33,20 @@ export const createComment = asyncHandler(async (req, res, next) => {
   if (!comment) {
     return next(new ApiError(500, "Failed to create comment"));
   }
+
+  if (video.owner._id.toString() !== userId.toString()) {
+    sendUserNotification(
+      video.owner._id,
+      '💬 New Comment on Your Video!',
+      `${req.user.name} commented: "${text}"`,
+      {
+        videoId: video._id.toString(),
+        commentId: comment._id.toString(),
+        actorId: userId.toString(),
+      }
+    ).catch(err => console.error("Notification error:", err));
+  }
+
 
   return res
     .status(201)
@@ -98,12 +122,39 @@ export const toggleCommentLike = asyncHandler(async (req, res) => {
 
   await comment.save();
 
- res.status(200).json(new ApiResponse(200, {
-  totalLikes: comment.likes.length,
-  totalDislikes: comment.dislikes.length,
-  liked: comment.likes.includes(userId),
-  disliked: comment.dislikes.includes(userId),
-}, "Like status updated"));
+   if (!liked) {
+    const recipients = [comment.user._id.toString()];
+
+    if (
+      comment.video &&
+      comment.video.owner &&
+      comment.video.owner.toString() !== userId.toString()
+    ) {
+      recipients.push(comment.video.owner.toString());
+    }
+
+    await sendUserNotification(
+      recipients,
+      "New Like on Comment",
+      `${req.user.username} liked a comment "`,
+      {
+        type: "COMMENT_LIKE",
+        commentId: comment._id.toString(),
+        videoId: comment.video._id.toString(),
+      }
+    );
+  }
+
+
+
+
+
+  res.status(200).json(new ApiResponse(200, {
+    totalLikes: comment.likes.length,
+    totalDislikes: comment.dislikes.length,
+    liked: comment.likes.includes(userId),
+    disliked: comment.dislikes.includes(userId),
+  }, "Like status updated"));
 
 });
 
@@ -129,11 +180,11 @@ export const toggleCommentDislike = asyncHandler(async (req, res) => {
   await comment.save();
 
   res.status(200).json(new ApiResponse(200, {
-  totalLikes: comment.likes.length,
-  totalDislikes: comment.dislikes.length,
-  disliked: comment.dislikes.includes(userId),
-  liked: comment.likes.includes(userId),
-}, "Dislike status updated"));
+    totalLikes: comment.likes.length,
+    totalDislikes: comment.dislikes.length,
+    disliked: comment.dislikes.includes(userId),
+    liked: comment.likes.includes(userId),
+  }, "Dislike status updated"));
 
 });
 

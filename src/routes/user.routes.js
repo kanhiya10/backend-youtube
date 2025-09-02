@@ -37,7 +37,7 @@ router.route("/cover-image").patch(verifyJWT,upload.single("coverImage"),updateU
 // router.route("/channel/:username").get(verifyJWT,getUserChannelProfile)
 router.route("/history/:videoId").post(verifyJWT, setWatchHistory);
 router.route("/GetHistory").get(verifyJWT, getWatchHistory);
-router.route("/ClearHistory/:userId").get(verifyJWT, ClearHistory);
+router.route("/ClearHistory").get(verifyJWT, ClearHistory);
 // router.route("/testing").get(testing)
 router.route("/visitChannel/:username").post(visitChannel);
 

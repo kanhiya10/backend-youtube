@@ -450,8 +450,6 @@ const setWatchHistory=asyncHandler(async(req,res)=>{
     const userId=req.user._id;
     const{videoId}=req.params;
 
-    console.log('this is userId :',userId,'this is videoId',videoId);
-
    
         const user = await User.findById(userId);
         if (user) {
@@ -477,7 +475,8 @@ const getWatchHistory=asyncHandler(async(req,res)=>{
         // Find the user by ID and populate the watchHistory field
         const user = await User.findById(userId).populate({
             path: 'watchHistory',
-            options: { limit: 10, sort: { createdAt: -1 } }, // latest first
+            options: { limit: 10, sort: { createdAt: -1 } },
+            select: " _id title videoFile description thumbnail createdAt"
           });
           
     
@@ -503,7 +502,8 @@ const getWatchHistory=asyncHandler(async(req,res)=>{
 })
 
 const ClearHistory=asyncHandler(async(req,res)=>{
-    const {userId}=req.params;
+    console.log("ClearHistory is working");
+    const userId=req.user._id;
 
     try{
         const user=await User.findByIdAndUpdate(userId,{

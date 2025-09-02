@@ -11,8 +11,9 @@ import fs from 'fs';
 import { exec } from 'child_process';
 import { stderr, stdout } from "process";
 import { User } from "../models/user.model.js";
+import { Comment } from "../models/comment.model.js";
 import util from 'util';
-import { sendVideoUploadNotification } from "../utils/videoUploadNotification.js";
+import { sendNotification } from "../utils/videoUploadNotification.js";
 import { Subscription } from "../models/subscription.model.js";
 import { Notification } from "../models/notificationEntries.model.js";
 import { getSubscriptionDetails } from "../utils/subscriptionHelpers.js";
@@ -114,13 +115,25 @@ const uploadVideo = asyncHandler(async (req, res) => {
       } else {
         console.log('Subscriptions found:', subscriptions);
 
+        const payload = {
+          title: 'New Video Uploaded!',
+          body: `Watch now.`,
+          videoId: video._id.toString(),
+          creatorId: req.user._id.toString(),
+          thumbnail: video.thumbnail,
+
+        };
+
         const dbNotifications = subscriptions.map((sub) => ({
           user: sub.subscriber,           // Receiver of the notification
           actor: req.user._id,            // Creator/uploader
           type: 'videoUpload',
           title: 'New Video Uploaded!',
           body: `${title} is now live.`,
-          data: { video },
+          data: payload,
+          isRead: false,
+          createdAt: new Date(),
+
         }));
 
         if (dbNotifications.length) {
@@ -129,7 +142,13 @@ const uploadVideo = asyncHandler(async (req, res) => {
         console.log('saved notifications in DB');
       }
 
-      await sendVideoUploadNotification(req.user._id, title, video._id);
+      await sendNotification(
+        req.user._id,
+        payload.title,
+        payload.body,
+        payload
+      );
+
 
       if (fs.existsSync(videoLocalPath)) {
         fs.unlinkSync(videoLocalPath);
@@ -201,7 +220,19 @@ const randomVideos = asyncHandler(async (req, res) => {
   console.log(' random videos fn is working ')
 
   try {
-    const randomVideos = await Video.aggregate([{ $sample: { size: 10 } }]);//to randomly fetch videos
+    const randomVideos = await Video.aggregate([
+      { $sample: { size: 10 } },
+      {
+        $project: {
+          _id: 1,
+          title: 1,
+          videoFile: 1,
+          description: 1,
+          thumbnail: 1,
+          createdAt: 1,
+        },
+      },
+    ]);//to randomly fetch videos
 
     return res.status(200).json(new ApiResponse(200, randomVideos, "random videos fetched successfully"))
   }
@@ -217,13 +248,13 @@ const videoOwnerInfo = asyncHandler(async (req, res) => {
 
   try {
     const video = await Video.findById(id)
-    .select(' videoFile thumbnail title views description owner ')
-    .populate({
+      .select(' videoFile thumbnail title views description owner ')
+      .populate({
         path: "owner",
         select: " username fullName avatar coverImage ", // pick only required fields from User
       })
-    .populate('likedBy', '_id')    // only populate _id (you could also populate username if needed)
-    .populate('dislikedBy', '_id')
+      .populate('likedBy', '_id')    // only populate _id (you could also populate username if needed)
+      .populate('dislikedBy', '_id')
 
 
     if (!video) {
@@ -233,31 +264,31 @@ const videoOwnerInfo = asyncHandler(async (req, res) => {
     const likesCount = video.likedBy?.length || 0;
     const dislikesCount = video.dislikedBy?.length || 0;
 
-     const { subscribersCount, isSubscribed } = await getSubscriptionDetails(
-    video.owner._id,
-    req.user?._id || null
-  );
+    const { subscribersCount, isSubscribed } = await getSubscriptionDetails(
+      video.owner._id,
+      req.user?._id || null
+    );
 
-  return res.status(200).json(
-  new ApiResponse(200,
-    {
-      video: {
-        _id: video._id,
-        title: video.title,
-        thumbnail: video.thumbnail,
-        views: video.views,
-        videoFile: video.videoFile,
-        description: video.description,
-        owner: video.owner,
-      },
-      likes: likesCount,
-      dislikes: dislikesCount,
-      isSubscribed,
-      subscribersCount,
-    },
-    "Video owner info fetched successfully"
-  )
-);
+    return res.status(200).json(
+      new ApiResponse(200,
+        {
+          video: {
+            _id: video._id,
+            title: video.title,
+            thumbnail: video.thumbnail,
+            views: video.views,
+            videoFile: video.videoFile,
+            description: video.description,
+            owner: video.owner,
+          },
+          likes: likesCount,
+          dislikes: dislikesCount,
+          isSubscribed,
+          subscribersCount,
+        },
+        "Video owner info fetched successfully"
+      )
+    );
 
   } catch (error) {
     console.error('Error fetching video owner info:', error);
@@ -318,12 +349,51 @@ const getSingleVideoById = asyncHandler(async (req, res) => {
   res.status(200).json(new ApiResponse(200, video, "Video fetched successfully"));
 });
 
+const deleteVideo = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  try {
+    const video = await Video.findById(id);
+    if (!video) {
+      return res.status(404).json(new ApiError(404, "Video not found"));
+    }
+
+    if (video.owner.toString() !== req.user._id.toString()) {
+      return res.status(403).json(new ApiError(403, "You are not authorized to delete this video"));
+    }
+
+    console.log("Deleting video:", video);
+
+    // Delete from Cloudinary
+    await RemoveFromCloudinary(video.videoFile);
+    await RemoveFromCloudinary(video.thumbnail);
+
+    console.log("Deleted from Cloudinary");
+    // Delete related comments
+    await Comment.deleteMany({ video: id });
+
+    // Remove from users’ watch history
+    await User.updateMany(
+      { watchHistory: id },
+      { $pull: { watchHistory: id } }
+    );
+
+    // Delete the video itself
+    await Video.findByIdAndDelete(id);
+
+    return res.status(200).json(new ApiResponse(200, null, "Video deleted successfully"));
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json(new ApiError(500, "Internal server error"));
+  }
+});
 
 
 
 
 
-export { uploadVideo, getVideosByUsername, randomVideos, videoOwnerInfo, toggleReaction, getSingleVideoById }
+
+
+export { uploadVideo, getVideosByUsername, randomVideos, videoOwnerInfo, toggleReaction, getSingleVideoById, deleteVideo }
 
 
 

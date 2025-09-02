@@ -4,6 +4,7 @@ export const getSubscriptionDetails = async (channelId, subscriberId = null) => 
   // Count total subscribers for channel
   const subscribersCount = await Subscription.countDocuments({ channel: channelId });
 
+
   // Check if logged-in user is subscribed
   let isSubscribed = false;
   if (subscriberId) {

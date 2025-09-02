@@ -60,7 +60,7 @@ const userSchema=new Schema(
     },
     streamKey: { 
         type: String,
-        required: true
+        
  },
     password:{
         type:String,

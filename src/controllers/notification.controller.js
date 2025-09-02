@@ -6,7 +6,7 @@ import { asyncHandler } from '../utils/asyncHandler.js';
 import { saveToken } from '../utils/saveToken.js';
 import { Notification } from '../models/notificationEntries.model.js';
 import { Subscription } from '../models/subscription.model.js';
-import { sendVideoUploadNotification } from '../utils/videoUploadNotification.js';
+import { sendNotification } from '../utils/videoUploadNotification.js';
 import { Topic } from '../models/topic.model.js';
 import { UploadOnCloudinary } from '../utils/cloudinary.js';
 
@@ -247,7 +247,78 @@ export const sendTopicNotification = asyncHandler(async (req, res) => {
   }
 });
 
+export const deleteNotification = asyncHandler(async (req, res) => {
+  const { notificationId } = req.params;
+  const userId = req.user._id;
 
+  try {
+    // Find the notification and verify ownership
+    const notification = await Notification.findById(notificationId);
+
+    if (!notification) {
+      return res.status(404).json(new ApiError(404, "Notification not found"));
+    }
+
+    // Check if the current user is the owner of this notification
+    if (notification.user.toString() !== userId.toString()) {
+      return res.status(403).json(new ApiError(403, "You are not authorized to delete this notification"));
+    }
+
+    // Delete the notification
+    await Notification.findByIdAndDelete(notificationId);
+
+    return res.status(200).json(
+      new ApiResponse(200, null, "Notification deleted successfully")
+    );
+  } catch (error) {
+    console.error("Error deleting notification:", error);
+    return res.status(500).json(new ApiError(500, "Internal server error"));
+  }
+});
+
+
+export const deleteAllNotifications = asyncHandler(async (req, res) => {
+  const userId = req.user._id;
+
+  try {
+    // Delete all notifications belonging to the current user
+    const deleteResult = await Notification.deleteMany({ user: userId });
+
+    return res.status(200).json(
+      new ApiResponse(
+        200, 
+        { deletedCount: deleteResult.deletedCount }, 
+        `Successfully deleted ${deleteResult.deletedCount} notifications`
+      )
+    );
+  } catch (error) {
+    console.error("Error deleting all notifications:", error);
+    return res.status(500).json(new ApiError(500, "Internal server error"));
+  }
+});
+
+// export const markAllNotificationsAsRead = asyncHandler(async (req, res) => {
+//   const userId = req.user._id;
+
+//   try {
+//     // Update all unread notifications for the current user
+//     const updateResult = await Notification.updateMany(
+//       { user: userId, isRead: false },
+//       { $set: { isRead: true } }
+//     );
+
+//     return res.status(200).json(
+//       new ApiResponse(
+//         200, 
+//         { modifiedCount: updateResult.modifiedCount }, 
+//         `Marked ${updateResult.modifiedCount} notifications as read`
+//       )
+//     );
+//   } catch (error) {
+//     console.error("Error marking all notifications as read:", error);
+//     return res.status(500).json(new ApiError(500, "Internal server error"));
+//   }
+// });
 
 export const dummyNotification = asyncHandler(async (req, res) => {
   const userId=req.user?._id;
@@ -271,10 +342,15 @@ export const dummyNotification = asyncHandler(async (req, res) => {
           // if (dbNotifications.length) {
           //   await Notification.insertMany(dbNotifications);
           // }
-          // console.log('saved notifications in DB');
+          console.log('saved notifications in DB');
         }
   
-        await sendVideoUploadNotification(userId, "title",123 );
+          await sendNotification(
+        req.user._id,
+        'Dummy Video Uploaded!',
+        'Watch now.',
+        { videoId: 'dummy-video-id', creatorId: req.user._id.toString() }
+      );
 
         res.status(200).json(new ApiResponse(200, null, 'Dummy notification sent'));
 
@@ -312,3 +388,4 @@ export const dummyToMyself = asyncHandler(async (req, res) => {
     throw new ApiError(500, 'Failed to send notification');
   }
 });
+ 
