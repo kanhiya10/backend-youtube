@@ -476,7 +476,7 @@ const getWatchHistory=asyncHandler(async(req,res)=>{
         const user = await User.findById(userId).populate({
             path: 'watchHistory',
             options: { limit: 10, sort: { createdAt: -1 } },
-            select: " _id title videoFile description thumbnail createdAt"
+            select: " _id title videoFile description thumbnail createdAt views duration", // Select only necessary fields
           });
           
     

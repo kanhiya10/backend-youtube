@@ -49,16 +49,10 @@ export const getRecommendedVideos = asyncHandler(async (req, res) => {
 
   scoredVideos.sort((a, b) => b.score - a.score);
 
-  // console.log(`🔍 Recommended ${scoredVideos.length} videos for user ${userId}`);
-  // console.log('Top scores:', scoredVideos.slice(0, 3).map(v => ({
-  //   id: v.video._id,
-  //   title: v.video.title,
-  //   score: v.score.toFixed(3)
-  // })));
 
   res.json({
     success: true,
-    recommended: scoredVideos.slice(0, 4).map(v => ({
+    recommended: scoredVideos.slice(0, 8).map(v => ({
       ...v.video,
       recommendationScore: Number(v.score.toFixed(3))
     }))

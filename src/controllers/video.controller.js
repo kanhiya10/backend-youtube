@@ -227,11 +227,13 @@ const randomVideos = asyncHandler(async (req, res) => {
           _id: 1,
           title: 1,
           videoFile: 1,
-          description: 1,
           thumbnail: 1,
           createdAt: 1,
+          views: 1,
+          duration: 1,
         },
       },
+
     ]);//to randomly fetch videos
 
     return res.status(200).json(new ApiResponse(200, randomVideos, "random videos fetched successfully"))
