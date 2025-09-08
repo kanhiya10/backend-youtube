@@ -30,9 +30,8 @@ export const sendNotification = async (creatorId, title, body, data = {}) => {
 
   const response = await getMessaging().sendEachForMulticast(message);
 
-  console.log(
-    `📣 Sent "${title}" notification to ${response.successCount}/${tokens.length} devices`
-  );
+  //   `📣 Sent "${title}" notification to ${response.successCount}/${tokens.length} devices`
+  // );
 };
 
 export const sendUserNotification = async (
@@ -43,12 +42,11 @@ export const sendUserNotification = async (
 ) => {
   const userIdArray = Array.isArray(userIds) ? userIds : [userIds];
 
-  console.log("sendUserNotification called with:", {
-    userIds: userIdArray,
-    title,
-    body,
-    data,
-  });
+  //   userIds: userIdArray,
+  //   title,
+  //   body,
+  //   data,
+  // });
 
   // fetch tokens for all userIds
   const tokens = await FcmToken.find({ userId: { $in: userIdArray } }).distinct(
@@ -57,7 +55,6 @@ export const sendUserNotification = async (
 
   if (!tokens.length) return;
 
-  console.log("tokens", tokens);
 
   const message = {
     notification: { title, body },
@@ -67,10 +64,9 @@ export const sendUserNotification = async (
 
   const response = await getMessaging().sendEachForMulticast(message);
 
-  console.log(
-    `📨 Sent "${title}" to ${response.successCount}/${tokens.length} devices for users ${userIdArray.join(
-      ", "
-    )}`
-  );
+  //   `📨 Sent "${title}" to ${response.successCount}/${tokens.length} devices for users ${userIdArray.join(
+  //     ", "
+  //   )}`
+  // );
 };
 

@@ -30,7 +30,6 @@ const generateAccessAndRefereshToken=async(userId)=>{
 
 const googleLogin = asyncHandler(async (req, res) => {
 
-    console.log("Google login initiated");
   const { idToken } = req.body;
 
   const ticket = await client.verifyIdToken({
@@ -71,7 +70,6 @@ const googleLogin = asyncHandler(async (req, res) => {
     sameSite: "none",
   };
 
-    console.log("User logged in successfully using google:", loggedInUser);
 
   return res
     .status(200)
@@ -95,10 +93,6 @@ const registerUser=asyncHandler(async(req,res)=>{
 
     const {fullName,username,email,password,description}=req.body;
 
-//     console.log('fullName :',fullName);
-// console.log('username :',username);
-console.log('email :',email);
-// console.log('password :',password);
 
 if(
     [fullName,email,username,password,description].some((field)=>field?.trim()==="")
@@ -111,7 +105,6 @@ const existedUser=await User.findOne({
 })
 
 if(existedUser){
-    console.log('existedUser:',existedUser);
     throw new ApiError(409,"User with email or username already exists")
 }
 
@@ -128,7 +121,6 @@ if(!avatarLocalPath){
     throw new ApiError(400,"Avatar file is required");
 }
 
-console.log("here error is coming");
 const avatar = await UploadOnCloudinary(avatarLocalPath, [
   { width: 200, height: 200, crop: 'thumb', gravity: 'face' }
 ]);
@@ -144,7 +136,6 @@ if(!avatar){
     }
 }
 
-console.log("this is the avatar",avatar);
 
 const user=await User.create({
     fullName,
@@ -191,10 +182,7 @@ const loginUser=asyncHandler(async(req,res)=>{
         throw new ApiError(400,"user does't exist");
     }
 
-    console.log("line 139",user.fullName)
-    console.log("line 140",user.password)
 
-    console.log("line 142",password)
 
       if (user.authProvider === "google") {
     throw new ApiError(403, "Please login using Google Sign-In");
@@ -202,7 +190,6 @@ const loginUser=asyncHandler(async(req,res)=>{
 
     const isPasswordValid=await user.isPasswordCorrect(password);//checks for the password saved in record
 
-    // console.log("line 113",isPasswordValid);
 
     if(!isPasswordValid){
         throw new ApiError(401,"Invalid user credentials");
@@ -269,7 +256,6 @@ const logoutUser=asyncHandler(async(req,res)=>{
 
 const refreshAccessToken=asyncHandler(async(req,res)=>{
 
-    console.log('access token refreshing starts');
 
     const incomingRefreshToken=req.cookies?.refreshToken || req.body.refreshToken
     if(!incomingRefreshToken){
@@ -282,7 +268,6 @@ const refreshAccessToken=asyncHandler(async(req,res)=>{
     
         const user=await User.findById(decodeToken?._id)
 
-        console.log("this is the user inside refreshAccessToken",user);
     
         if(!user){
             throw new ApiError(401,"Invalid Refresh Token")
@@ -299,7 +284,6 @@ const refreshAccessToken=asyncHandler(async(req,res)=>{
     
         const accessToken=await user.generateAccessToken();
 
-        console.log("new access token generated",accessToken); 
 
         return res
         .status(200)
@@ -319,14 +303,11 @@ const refreshAccessToken=asyncHandler(async(req,res)=>{
 })
 
 const changeCurrentPassword=asyncHandler(async(req,res)=>{
-    console.log("process started");
 
     const{currentPassword,newPassword}=req.body;
 
     const user=await User.findById(req.user?._id)
 
-    console.log('currentPassword',currentPassword,'newPassword',newPassword);
-    console.log("this is the user",user);
 
     if(!user){
         throw new ApiError(404,"user does't exist") 
@@ -334,7 +315,6 @@ const changeCurrentPassword=asyncHandler(async(req,res)=>{
     if(!currentPassword || !newPassword){
         throw new ApiError(400,"All fields are required")   
     }
-    console.log("this is the user",user);
 
     const isPasswordValid=await user.isPasswordCorrect(currentPassword)
 
@@ -384,7 +364,6 @@ const updateUsersAvatar=asyncHandler(async(req,res)=>{
     }
 
     //delete old image -assignment
-    console.log("This is the localPath to be deleted",req.user?.avatar);
     const DeletePrevAvatar=await RemoveFromCloudinary(req.user?.avatar)
 
 
@@ -410,20 +389,16 @@ const updateUsersAvatar=asyncHandler(async(req,res)=>{
 
 const updateUsersCoverImage=asyncHandler(async(req,res)=>{
 
-    console.log('line 331 :',req.file?.path);
 
     const coverImageLocalPath=req.file?.path
 
-    console.log('updateUsersCoverImage is working');
 
     if(!coverImageLocalPath){
         throw new ApiError(400,"coverImage file is missing")
     }
 
-    console.log("This is the localPath of coverImage to be deleted",req.user?.coverImage);
     const DeletePrevCoverImage=await RemoveFromCloudinary(req.user?.coverImage)
 
-    console.log("result of DeletePrevCoverImage",DeletePrevCoverImage);
 
     const coverImage=await UploadOnCloudinary(coverImageLocalPath)
 
@@ -454,11 +429,8 @@ const setWatchHistory=asyncHandler(async(req,res)=>{
         const user = await User.findById(userId);
         if (user) {
             user.watchHistory.push(videoId);
-            console.log('this is the user watch history',user.watchHistory);
             await user.save();
-            console.log('Video added to watch history.');
         } else {
-            console.log('User not found.');
         }
     
 
@@ -470,7 +442,6 @@ const setWatchHistory=asyncHandler(async(req,res)=>{
 const getWatchHistory=asyncHandler(async(req,res)=>{
 
     const userId=req.user._id;
-    console.log("this is the userId",userId);
     try {
         // Find the user by ID and populate the watchHistory field
         const user = await User.findById(userId).populate({
@@ -481,13 +452,11 @@ const getWatchHistory=asyncHandler(async(req,res)=>{
           
     
         if (!user) {
-          console.log('User not found');
           return;
         }
         
 
     
-        console.log('User Watch History:', user.watchHistory);
     
         // The user.watchHistory will now contain an array of full Video documents
         return res.status(200)
@@ -502,7 +471,6 @@ const getWatchHistory=asyncHandler(async(req,res)=>{
 })
 
 const ClearHistory=asyncHandler(async(req,res)=>{
-    console.log("ClearHistory is working");
     const userId=req.user._id;
 
     try{
@@ -525,7 +493,6 @@ const ClearHistory=asyncHandler(async(req,res)=>{
 const visitChannel=asyncHandler(async(req,res)=>{
     const{username}=req.params;
 
-    console.log("this is the username",username);
 
 
     if(!username?.trim()){

@@ -55,7 +55,6 @@ export const createComment = asyncHandler(async (req, res, next) => {
 
 // export const getCommentsByVideo = asyncHandler(async (req, res, next) => {
 //   const videoId = req.params.videoId;
-//   console.log("videoId inside getCommentsByVideo:", videoId);
 
 //   if (!videoId) {
 //     return next(new ApiError(400, "Video ID is required"));
@@ -218,7 +217,6 @@ export const getCommentsForVideo = asyncHandler(async (req, res) => {
     rootComments.map(comment => getCommentWithReplies(comment._id))
   );
 
-  // console.log("nestedComments:", nestedComments);
 
   res.status(200).json(new ApiResponse(200, nestedComments, "Comments fetched successfully"));
 });

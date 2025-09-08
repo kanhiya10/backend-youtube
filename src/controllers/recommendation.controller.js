@@ -12,12 +12,8 @@ export const predictVideo = asyncHandler(async (req, res) => {
   const userId = req.user._id.toString();
   const { videoId } = req.params;
 
-  console.log("🔎 Prediction request:");
-  console.log("   ➤ User ID:", userId);
-  console.log("   ➤ Video ID:", videoId);
 
   const output = predict(userId, videoId);
-  console.log("✅ Model Output:", output);
 
   res.json({ 
     success: true, 
@@ -30,7 +26,6 @@ export const predictVideo = asyncHandler(async (req, res) => {
 
 export const getRecommendedVideos = asyncHandler(async (req, res) => {
   const userId = req.user._id.toString();
-  console.log(`🔍 Fetching recommendations for user ${userId}`);
   
   const candidateVideos = await getCandidateVideos();
   const scoredVideos = [];
@@ -68,7 +63,6 @@ export async function getCandidateVideos() {
       .select("_id title thumbnail videoFile views createdAt duration")
       .lean();
 
-    console.log(`📹 Found ${videos.length} candidate videos`);
     return videos;
     
   } catch (error) {
@@ -82,15 +76,9 @@ export const debugPrediction = asyncHandler(async (req, res) => {
   const userId = req.user._id.toString();
   const { videoId } = req.params;
 
-  console.log("🐛 Debug prediction:");
-  console.log("   ➤ User ID:", userId);
-  console.log("   ➤ Video ID:", videoId);
 
   try {
     const prediction = predict(userId, videoId);
-    console.log("   ➤ Raw prediction:", prediction);
-    console.log("   ➤ Prediction type:", typeof prediction);
-    console.log("   ➤ Is array?:", Array.isArray(prediction));
     
     let extractedScore;
     if (prediction && typeof prediction === 'object' && !Array.isArray(prediction)) {
@@ -101,8 +89,6 @@ export const debugPrediction = asyncHandler(async (req, res) => {
       extractedScore = prediction;
     }
     
-    console.log("   ➤ Extracted score:", extractedScore);
-    console.log("   ➤ Score type:", typeof extractedScore);
 
     res.json({
       success: true,

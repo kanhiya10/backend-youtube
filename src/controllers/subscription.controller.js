@@ -10,7 +10,6 @@ export const toggleSubscription = asyncHandler(async (req, res) => {
   const subscriberId = req.user._id;
   const channelId = req.params.channelId;
 
-  console.log(`🔄 Toggling subscription for user ${subscriberId} to channel ${channelId}`);
 
   if (subscriberId.toString() === channelId.toString()) {
     throw new ApiError(400, "You cannot subscribe to yourself");

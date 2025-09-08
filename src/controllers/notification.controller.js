@@ -82,7 +82,6 @@ export const saveTokenHandler = asyncHandler(async (req, res) => {
 
   const result = await saveToken(userId, token, platform);
 
-  console.log('FCM Token saved:', result);
   res.status(200).json(result);
 });
 
@@ -208,7 +207,6 @@ export const createTopic = asyncHandler(async (req, res) => {
 
 export const sendTopicNotification = asyncHandler(async (req, res) => {
 
-  console.log("Sending topic notification:", req.body);
   const { topicName, title, body, data } = req.body;
 
   if (!topicName || !title || !body) {
@@ -326,9 +324,7 @@ export const dummyNotification = asyncHandler(async (req, res) => {
    const subscriptions = await Subscription.find({ channel: userId }).select('subscriber');
   
         if (!subscriptions || subscriptions.length === 0) {
-          console.log('No subscriptions found for this user');
         } else {
-          console.log('Subscriptions found:', subscriptions);
   
           // const dbNotifications = subscriptions.map((sub) => ({
           //   user: sub.subscriber,           // Receiver of the notification
@@ -342,7 +338,6 @@ export const dummyNotification = asyncHandler(async (req, res) => {
           // if (dbNotifications.length) {
           //   await Notification.insertMany(dbNotifications);
           // }
-          console.log('saved notifications in DB');
         }
   
           await sendNotification(
@@ -367,7 +362,6 @@ export const dummyToMyself = asyncHandler(async (req, res) => {
 
   const tokens = fcmTokens.map(t => t.token);
 
-  console.log("mytokens",tokens);
 
   const message = {
     notification: {
@@ -381,7 +375,6 @@ export const dummyToMyself = asyncHandler(async (req, res) => {
   try {
     const response = await getMessaging().sendEachForMulticast(message);
     // getMessaging().sendEachForMulticast(message);
-    console.log('Successfully sent message:', response);
     res.status(200).json(new ApiResponse(200, { response }, 'Dummy notification sent to myself'));
   } catch (error) {
     console.error('Error sending message:', error);

@@ -21,7 +21,6 @@ export let videoFeatures = new Map();
 
 // Create consistent feature vectors for users and videos
 async function createFeatureMaps() {
-  console.log('📊 Creating feature maps...');
   
   const users = await User.find({}).select('_id username');
   const videos = await Video.find({}).select('_id owner duration views createdAt title');
@@ -47,7 +46,6 @@ async function createFeatureMaps() {
     });
   });
   
-  console.log(`📊 Created maps: ${users.length} users, ${videos.length} videos`);
 }
 
 // Create feature vector - returns ARRAY instead of object
@@ -77,7 +75,6 @@ export default async function trainModelFromDB() {
   await createFeatureMaps();
   
   const trainingData = [];
-  console.log('⏳ Fetching data from DB...');
 
   // 1. Process video likes/dislikes
   const videos = await Video.find({}).select('likedBy dislikedBy owner');
@@ -215,8 +212,6 @@ export default async function trainModelFromDB() {
     throw new Error("No training data found to train the model");
   }
 
-  console.log(`⚡ Training model on ${trainingData.length} samples...`);
-  console.log('Sample training data:', trainingData.slice(0, 2));
   
   try {
     net.train(trainingData, {
@@ -245,8 +240,6 @@ export default async function trainModelFromDB() {
     };
     
     fs.writeFileSync('trainedModel.json', JSON.stringify(modelData, null, 2));
-    console.log('✅ Model and feature maps saved successfully!');
-    console.log(`📊 Training completed with ${trainingData.length} samples`);
     
   } catch (error) {
     console.error('Training failed:', error);
@@ -263,7 +256,7 @@ export function predict(userId, videoId) {
   
   const features = createFeatureVector(userId, videoId);
   if (!features) {
-    console.warn(`Could not create features for user ${userId} and video ${videoId}`);
+    // console.warn(`Could not create features for user ${userId} and video ${videoId}`);
     return { like: 0.5 };
   }
   
@@ -335,8 +328,6 @@ export function loadSavedModel(modelPath) {
     videoIndexMap = new Map(modelData.videoIndexMap);
     videoFeatures = new Map(modelData.videoFeatures);
     
-    console.log('✅ Model and feature maps loaded successfully!');
-    console.log(`📊 Model trained on ${modelData.trainingDataCount} samples at ${modelData.timestamp}`);
     
   } catch (error) {
     console.error('Failed to load model:', error);
@@ -358,10 +349,8 @@ export function getModelStats() {
 export async function initializeModel() {
   try {
     if (fs.existsSync('trainedModel.json')) {
-      console.log('🔄 Loading existing model...');
       loadSavedModel('trainedModel.json');
     } else {
-      console.log('🆕 No existing model found, training new model...');
       await trainModelFromDB();
     }
   } catch (error) {

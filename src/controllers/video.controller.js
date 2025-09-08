@@ -31,7 +31,6 @@ async function getVideoDuration(filePath) {
 }
 
 const uploadVideo = asyncHandler(async (req, res) => {
-  console.log('upload video fn is working');
 
   const { title, description, views, isPublished } = req.body;
 
@@ -106,14 +105,11 @@ const uploadVideo = asyncHandler(async (req, res) => {
         owner: req.user?._id,
       });
 
-      console.log('Video instance created in DB');
 
       const subscriptions = await Subscription.find({ channel: req.user._id }).select('subscriber');
 
       if (!subscriptions || subscriptions.length === 0) {
-        console.log('No subscriptions found for this user');
       } else {
-        console.log('Subscriptions found:', subscriptions);
 
         const payload = {
           title: 'New Video Uploaded!',
@@ -139,7 +135,6 @@ const uploadVideo = asyncHandler(async (req, res) => {
         if (dbNotifications.length) {
           await Notification.insertMany(dbNotifications);
         }
-        console.log('saved notifications in DB');
       }
 
       await sendNotification(
@@ -178,7 +173,6 @@ const uploadVideo = asyncHandler(async (req, res) => {
 //     const {id}=req.params;
 //     try{
 //         const AllVideos=await Video.find({owner:new mongoose.Types.ObjectId(id)});
-//         console.log("Users video collection :",AllVideos);
 
 //         return res.status(200).json(new ApiResponse(200,AllVideos,"video fetching successfull"));
 //     }
@@ -205,7 +199,6 @@ const getVideosByUsername = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Username is required or user must be logged in");
   }
 
-  console.log("Fetching videos for userId:", userId);
 
   // Fetch videos belonging to the resolved user ID
   const videos = await Video.find({ owner: userId }).sort({ createdAt: -1 });
@@ -217,7 +210,6 @@ const getVideosByUsername = asyncHandler(async (req, res) => {
 
 const randomVideos = asyncHandler(async (req, res) => {
 
-  console.log(' random videos fn is working ')
 
   try {
     const randomVideos = await Video.aggregate([
@@ -363,13 +355,11 @@ const deleteVideo = asyncHandler(async (req, res) => {
       return res.status(403).json(new ApiError(403, "You are not authorized to delete this video"));
     }
 
-    console.log("Deleting video:", video);
 
     // Delete from Cloudinary
     await RemoveFromCloudinary(video.videoFile);
     await RemoveFromCloudinary(video.thumbnail);
 
-    console.log("Deleted from Cloudinary");
     // Delete related comments
     await Comment.deleteMany({ video: id });
 

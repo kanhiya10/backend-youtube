@@ -35,15 +35,11 @@ const modelPath = 'trainedModel.json';
 connectDB()
   .then(async () => {
     // UPDATED MODEL INITIALIZATION - Use the new safer method
-    console.log('🔄 Initializing recommendation model...');
     await initializeModel();
-    console.log('✅ Recommendation model ready!');
 
     // Start server
     server.listen(process.env.PORT || 8001, () => {
-      console.log(`🚀 Server running at port: ${process.env.PORT || 8001}`);
     });
   })
   .catch((err) => {
-    console.log("❌ App failed to start:", err);
   });
