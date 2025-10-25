@@ -21,6 +21,7 @@ pipeline {
       steps {
         dir('/workspace/backend-youtube') {
           sh '''
+            echo "Building Docker image..."
             docker build -t $IMAGE_NAME:$IMAGE_TAG .
             echo "$DOCKERHUB_CREDS_PSW" | docker login -u "$DOCKERHUB_CREDS_USR" --password-stdin
             docker push $IMAGE_NAME:$IMAGE_TAG
