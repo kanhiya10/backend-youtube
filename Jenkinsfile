@@ -35,6 +35,7 @@ pipeline {
         dir("$DEPLOY_DIR") {
           sh '''
             docker-compose pull backend
+            docker rm -f backend || true
             docker-compose up -d --force-recreate backend
           '''
         }
