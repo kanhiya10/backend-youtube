@@ -4,8 +4,9 @@ import { predictVideo,getRecommendedVideos } from '../controllers/recommendation
 
 const router = express.Router();
 
-router.route('/recommend/:userId/:videoId').get(verifyJWT, predictVideo);
+router.route('/recommend/:videoId').get(verifyJWT, predictVideo);
 
 router.route('/collection').get(verifyJWT, getRecommendedVideos);
+
 
 export default router;

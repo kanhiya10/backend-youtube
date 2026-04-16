@@ -90,11 +90,9 @@ export const getMessages = asyncHandler(async (req, res) => {
 
 
 export const MediaFileUpload = asyncHandler(async (req, res) => {
-  console.log("file upload for real time messages called");
    try {
     if (!req.file) return res.status(400).json({ success: false, message: 'No file uploaded' });
 
-    console.log("File uploaded in conversation.controller:", req.file);
 
     const result = await UploadOnCloudinary(req.file.path,
       [{ width: 500, height: 500, crop: "limit" }]

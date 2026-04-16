@@ -39,7 +39,6 @@ const startStream = asyncHandler(async (req, res) => {
 
 
 const getStreamByUsername = asyncHandler(async (req, res) => {
-    console.log("getStreamByUsername");
     const { username } = req.params;
   
     // Find the user by username
@@ -86,7 +85,6 @@ const getStreamByUsername = asyncHandler(async (req, res) => {
 
   const getPastStreamsByUsername = asyncHandler(async (req, res) => {
     let userId;
-    console.log("getPastStreamsByUsername");
     if (req.user) {
       userId = req.user._id;
     } else if (req.params.username) {
@@ -97,7 +95,6 @@ const getStreamByUsername = asyncHandler(async (req, res) => {
       throw new ApiError(400, "Username is required or user must be logged in");
     }
 
-    console.log("userId in getPastStreamsByUsername",userId);
 
     const pastStreams = await Stream.find({
       userId: userId,
@@ -105,7 +102,6 @@ const getStreamByUsername = asyncHandler(async (req, res) => {
       endedAt: { $ne: null },
     }).sort({ endedAt: -1 });
 
-    console.log("pastStreams in getPastStreamsByUsername",pastStreams);
   
     res.json(new ApiResponse(200, pastStreams, "Past streams fetched"));
   });
