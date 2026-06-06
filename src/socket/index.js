@@ -6,9 +6,9 @@ export const onlineUsers = new Map(); // Move it to top-level and export
 
 export function setupSocket(server) {
   const io = new Server(server, {
-    path: "/socket.io/",
+    path: "/socket.io",
     cors: {
-      origin: "https://frontend-youtube-tghl.vercel.app", // ✅ must match your frontend
+      origin: true, 
       methods: ["GET", "POST"],    
       credentials: true,
     },
