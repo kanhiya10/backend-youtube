@@ -6,7 +6,8 @@ import connectDB from "./db/db.js";
 import http from "http";
 import { app } from "./app.js";
 import { initializeApp, cert } from 'firebase-admin/app';
-import trainModelFromDB, { net, isTrained } from "./utils/recommend.js";
+// import trainModelFromDB, { net, isTrained } from "./utils/recommend.js";
+import { initializeModel } from "./utils/recommend.js";
 import {setupSocket,onlineUsers} from "./socket/index.js";
 import {startMessageConsumer} from "./kafka/consumer.js";
 
@@ -17,12 +18,13 @@ const server = http.createServer(app);
 const io = setupSocket(server);
 
 // Start Kafka consumer with Socket.IO access
-// startMessageConsumer(io,onlineUsers).catch(console.error);
+startMessageConsumer(io,onlineUsers).catch(console.error);
 
 // Load Firebase
 const serviceAccount = JSON.parse(
-  fs.readFileSync(path.join(__dirname, './config/serviceAccount.json'), 'utf-8')
+  Buffer.from(process.env.FIREBASE_SERVICE_ACCOUNT_BASE64, 'base64').toString('utf-8')
 );
+
 initializeApp({
   credential: cert(serviceAccount)
 });
@@ -33,21 +35,13 @@ const modelPath = 'trainedModel.json';
 
 connectDB()
   .then(async () => {
-    // Load or train model
-    if (fs.existsSync(modelPath)) {
-      const savedModel = JSON.parse(fs.readFileSync(modelPath, 'utf8'));
-      net.fromJSON(savedModel);
-      console.log('✅ Model loaded from disk.');
-    } else {
-      console.log('🔁 No model found. Training...');
-      await trainModelFromDB();
-    }
+    // UPDATED MODEL INITIALIZATION - Use the new safer method
+    await initializeModel();
 
     // Start server
-    server.listen(process.env.PORT || 8000, () => {
-      console.log(`🚀 Server running at port: ${process.env.PORT || 8000}`);
+    server.listen(process.env.PORT || 8001, () => {
     });
   })
   .catch((err) => {
-    console.log("❌ App failed to start:", err);
+    console.error("Failed to connect to DB", err);
   });

@@ -60,7 +60,7 @@ const userSchema=new Schema(
     },
     streamKey: { 
         type: String,
-        required: true
+        
  },
     password:{
         type:String,
@@ -68,7 +68,12 @@ const userSchema=new Schema(
     },
     refreshToken:{
         type:String,
-    }
+    },
+    role: {
+    type: String,
+    enum: ["user", "admin"],
+    default: "user",
+  },
 
 
 },{timestamps:true}
@@ -79,7 +84,6 @@ const userSchema=new Schema(
 userSchema.pre("save",async function (next){
     if(!this.isModified("password")) return next();
 
-    console.log(this.password);
     this.password=await bcrypt.hash(this.password,10);//bcrypt encrypts the password
     next();
 })

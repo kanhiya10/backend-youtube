@@ -18,7 +18,7 @@ app.use(cookieParser());
 
 app.use(cors({
     // origin:process.env.Cors_Origin,
-    origin: ['http://localhost:5173', 'http://localhost:8080','http://localhost:9000'],
+    origin: ['https://frontend-youtube-three.vercel.app', 'http://localhost:8080','https://frontend-youtube-tghl.vercel.app'],
     credentials:true,
 }))
 // This configuration allows requests from the origin specified in process.env.Cors_Origin and includes credentials (cookies, authorization headers, etc.) in cross-origin requests.

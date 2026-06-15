@@ -45,7 +45,6 @@ export async function getCommentWithReplies(commentId) {
 
   if (!comment) return null;
 
-  // console.log('replies:', comment.replies);
 
   const replies = await Comment.find({ parentComment: comment._id })
     .populate("user", "name")
@@ -55,7 +54,6 @@ export async function getCommentWithReplies(commentId) {
     replies.map(reply => getCommentWithReplies(reply._id))
   );
 
-  // console.log('comment returned',comment);
 
   return comment;
 }

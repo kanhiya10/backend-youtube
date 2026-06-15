@@ -37,25 +37,12 @@ router.route("/cover-image").patch(verifyJWT,upload.single("coverImage"),updateU
 // router.route("/channel/:username").get(verifyJWT,getUserChannelProfile)
 router.route("/history/:videoId").post(verifyJWT, setWatchHistory);
 router.route("/GetHistory").get(verifyJWT, getWatchHistory);
-router.route("/ClearHistory/:userId").get(verifyJWT, ClearHistory);
+router.route("/ClearHistory").get(verifyJWT, ClearHistory);
 // router.route("/testing").get(testing)
 router.route("/visitChannel/:username").post(visitChannel);
 
 router.route("/google-login").post(googleLogin);
 
-// router.route("/uploadVideo").post(verifyJWT,upload.fields([
-//     {
-//         name:'video',
-//         maxCount:1
-//     },
-//     {
-//         name:'thumbnail',
-//         maxCount:1
-//     }
-// ])
-//     ,uploadVideo)
-
-// router.route("/handleGetVideos").get(verifyJWT,handleGetVideos)
 
 
 export default router; 
