@@ -74,6 +74,10 @@ const userSchema=new Schema(
     enum: ["user", "admin"],
     default: "user",
   },
+  membershipPrice: {
+    type: Number,
+    default: 149
+}
 
 
 },{timestamps:true}

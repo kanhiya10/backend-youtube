@@ -18,7 +18,7 @@ app.use(cookieParser());
 
 app.use(cors({
     // origin:process.env.Cors_Origin,
-    origin: ['https://frontend-youtube-three.vercel.app', 'http://localhost:8080','https://frontend-youtube-tghl.vercel.app'],
+    origin: ['https://frontend-youtube-three.vercel.app', 'http://localhost:8080','https://frontend-youtube-tghl.vercel.app', 'http://localhost:5173'],
     credentials:true,
 }))
 // This configuration allows requests from the origin specified in process.env.Cors_Origin and includes credentials (cookies, authorization headers, etc.) in cross-origin requests.
@@ -59,6 +59,10 @@ import searchRouter from "./routes/search.routes.js";
 
 import conversationRouter from "./routes/conversation.routes.js";
 
+import membershipRouter from "./routes/membership.routes.js";
+
+import paymentRouter from "./routes/payment.routes.js";
+
 
 app.use("/api/v1/users", userRouter);
 
@@ -79,5 +83,9 @@ app.use("/api/v1/recommendations", recommendationRouter);
 app.use("/api/v1/search",searchRouter);
 
 app.use("/api/v1/conversations", conversationRouter);
+
+app.use("/api/v1/membership", membershipRouter);
+
+app.use("/api/v1/payment", paymentRouter);
 
 export {app};

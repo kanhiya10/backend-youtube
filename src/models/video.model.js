@@ -31,6 +31,11 @@ const videoSchema=new Schema(
         type:Boolean,
         default:true,
     },
+      visibility: {
+        type: String,
+        enum: ["public", "members"],
+        default: "public"
+    },
     owner:{
         type:Schema.Types.ObjectId,
         ref:'User'

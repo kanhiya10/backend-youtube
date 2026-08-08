@@ -25,7 +25,7 @@ router.route("/uploadVideo").post(verifyJWT,upload.fields([
 // router.route("/handleGetVideos/:id").post(verifyJWT,handleGetVideos)
 
 router.route("/user").get(verifyJWT, getVideosByUsername);
-router.route("/user/:username").get(getVideosByUsername);
+router.route("/user/:username").get(verifyUserOptional,getVideosByUsername);
 
 
 router.route("/randomVideos").get(randomVideos)
