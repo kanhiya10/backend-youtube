@@ -16,11 +16,19 @@ app.use(cookieParser());
 
 // app.use(cors());
 
-app.use(cors({
-    // origin:process.env.Cors_Origin,
-    origin: ['https://frontend-youtube-three.vercel.app', 'http://localhost:8080','https://frontend-youtube-tghl.vercel.app', 'http://localhost:5173'],
-    credentials:true,
-}))
+// app.use(cors({
+//     // origin:process.env.Cors_Origin,
+//     origin: ['https://frontend-youtube-three.vercel.app', 'http://localhost:8080','https://frontend-youtube-tghl.vercel.app', 'http://localhost:5173'],
+//     credentials:true,
+// }))
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      callback(null, true);
+    },
+    credentials: true,
+  })
+);
 // This configuration allows requests from the origin specified in process.env.Cors_Origin and includes credentials (cookies, authorization headers, etc.) in cross-origin requests.
 
 //to set the limit on the incoming json payload from the body of http request.
