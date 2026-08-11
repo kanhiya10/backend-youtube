@@ -17,6 +17,7 @@ import { sendNotification } from "../utils/videoUploadNotification.js";
 import { Subscription } from "../models/subscription.model.js";
 import { Notification } from "../models/notificationEntries.model.js";
 import { getSubscriptionDetails } from "../utils/subscriptionHelpers.js";
+import { Membership } from "../models/membership.model.js";
 
 const execPromise = util.promisify(exec);
 
@@ -32,7 +33,8 @@ async function getVideoDuration(filePath) {
 
 const uploadVideo = asyncHandler(async (req, res) => {
 
-  const { title, description, views, isPublished } = req.body;
+  const { title, description, views, isPublished, visibility } = req.body;
+
 
   if ([title, description, views, isPublished].some((field) => field?.trim() === "")) {
     throw new ApiError(400, "All fields are required");
@@ -102,6 +104,7 @@ const uploadVideo = asyncHandler(async (req, res) => {
         duration,
         views,
         isPublished,
+        visibility,
         owner: req.user?._id,
       });
 
@@ -167,45 +170,108 @@ const uploadVideo = asyncHandler(async (req, res) => {
   });
 });
 
+// const getVideosByUsername = asyncHandler(async (req, res) => {
+//   let userId;
+
+//   // If the request has an authenticated user, use their ID
+//   if (req.user) {
+//     userId = req.user._id;
+//   }
+//   // If a username is provided in the route params, find the user by username
+//   else if (req.params.username) {
+//     const user = await User.findOne({ username: req.params.username });
+//     if (!user) throw new ApiError(404, "User not found");
+//     userId = user._id;
+//   }
+//   // If neither an authenticated user nor a username is available, return an error
+//   else {
+//     throw new ApiError(400, "Username is required or user must be logged in");
+//   }
 
 
-// const handleGetVideos=asyncHandler(async(req,res)=>{
-//     const {id}=req.params;
-//     try{
-//         const AllVideos=await Video.find({owner:new mongoose.Types.ObjectId(id)});
+//   // Fetch videos belonging to the resolved user ID
+//   const videos = await Video.find({ owner: userId }).sort({ createdAt: -1 });
 
-//         return res.status(200).json(new ApiResponse(200,AllVideos,"video fetching successfull"));
-//     }
-//     catch(error){
-//         console.error(error);
-//     }
-// })
+//   res.json(new ApiResponse(200, videos, "Videos fetched successfully"));
+// });
 
 const getVideosByUsername = asyncHandler(async (req, res) => {
-  let userId;
+  let profileUserId;
 
-  // If the request has an authenticated user, use their ID
-  if (req.user) {
-    userId = req.user._id;
+  // Find whose profile is being viewed
+  if (req.params.username) {
+    const user = await User.findOne({
+      username: req.params.username,
+    });
+
+    if (!user) {
+      throw new ApiError(404, "User not found");
+    }
+
+    profileUserId = user._id;
+  } else if (req.user?._id) {
+    profileUserId = req.user._id;
+  } else {
+    throw new ApiError(
+      400,
+      "Username is required or user must be logged in"
+    );
   }
-  // If a username is provided in the route params, find the user by username
-  else if (req.params.username) {
-    const user = await User.findOne({ username: req.params.username });
-    if (!user) throw new ApiError(404, "User not found");
-    userId = user._id;
+
+  const viewerId = req.user?._id;
+
+  let canWatchMembersOnly = false;
+
+  // Logged-in user
+  if (viewerId) {
+    // Is the viewer the channel owner?
+    const isOwner =
+      viewerId.toString() === profileUserId.toString();
+
+    if (isOwner) {
+      canWatchMembersOnly = true;
+    } else {
+      // Check active + non-expired membership
+      const membership = await Membership.findOne({
+        member: viewerId,
+        channel: profileUserId,
+        status: "active",
+        expiryDate: {
+          $gt: new Date(),
+        },
+      });
+
+      canWatchMembersOnly = !!membership;
+    }
   }
-  // If neither an authenticated user nor a username is available, return an error
-  else {
-    throw new ApiError(400, "Username is required or user must be logged in");
-  }
 
+  // Fetch videos
+  const videos = await Video.find({
+    owner: profileUserId,
+  })
+    .sort({ createdAt: -1 })
+    .lean();
 
-  // Fetch videos belonging to the resolved user ID
-  const videos = await Video.find({ owner: userId }).sort({ createdAt: -1 });
+  // Don't expose member-only videoFile to unauthorized users
+  const sanitizedVideos = videos.map((video) => ({
+    ...video,
+    videoFile:
+      video.visibility === "members" && !canWatchMembersOnly
+        ? null
+        : video.videoFile,
+  }));
 
-  res.json(new ApiResponse(200, videos, "Videos fetched successfully"));
+  return res.json(
+    new ApiResponse(
+      200,
+      {
+        videos: sanitizedVideos,
+        canWatchMembersOnly,
+      },
+      "Videos fetched successfully"
+    )
+  );
 });
-
 
 
 const randomVideos = asyncHandler(async (req, res) => {
@@ -221,6 +287,7 @@ const randomVideos = asyncHandler(async (req, res) => {
           videoFile: 1,
           thumbnail: 1,
           createdAt: 1,
+          visibility: 1,
           views: 1,
           duration: 1,
         },
@@ -231,7 +298,7 @@ const randomVideos = asyncHandler(async (req, res) => {
     return res.status(200).json(new ApiResponse(200, randomVideos, "random videos fetched successfully"))
   }
   catch (error) {
-    console.error('Error fetching random videos:', err);
+    console.error('Error fetching random videos:', error);
     res.status(500).json(new ApiError(500, "random videos not fetched "));
   }
 
@@ -242,7 +309,7 @@ const videoOwnerInfo = asyncHandler(async (req, res) => {
 
   try {
     const video = await Video.findById(id)
-      .select(' videoFile thumbnail title views description owner ')
+      .select(' videoFile thumbnail title views description owner visibility ')
       .populate({
         path: "owner",
         select: " username fullName avatar coverImage ", // pick only required fields from User
@@ -262,19 +329,42 @@ const videoOwnerInfo = asyncHandler(async (req, res) => {
       video.owner._id,
       req.user?._id || null
     );
+    let canWatch = false;
+
+   
+
+    if (video.visibility === "public") {
+      canWatch = true;
+    } else if (req.user) {
+      const membership = await Membership.findOne({
+        member: req.user._id,
+        channel: video.owner
+      });
+
+      if (
+        (membership &&
+        membership.status === "active" &&
+        membership.expiryDate > new Date()) || (req.user._id.toString()===video.owner._id.toString())
+      ) {
+        canWatch = true;
+      }
+    }
+
+
 
     return res.status(200).json(
       new ApiResponse(200,
         {
-          video: {
+          video: {  
             _id: video._id,
             title: video.title,
             thumbnail: video.thumbnail,
             views: video.views,
-            videoFile: video.videoFile,
+            videoFile: canWatch ? video.videoFile : null,
             description: video.description,
             owner: video.owner,
           },
+          canWatch,
           likes: likesCount,
           dislikes: dislikesCount,
           isSubscribed,
